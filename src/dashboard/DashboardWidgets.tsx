@@ -1,3 +1,4 @@
+import { subscribeWorkspaceFileChanges } from "./workspaceFileEvents";
 import { BlueskyDialog } from "../social/BlueskyDialog";
 import { useI18n } from "../i18n/context";
 import { desktopBluesky } from "../lib/wailsBackend";
@@ -746,29 +747,27 @@ export function TimelineDashboardWidget(
       file ? parseTimeline(file.content, path) : []
     );
   }, [folder]);
+  const loadId = useRef(0);
   const load = useCallback(async () => {
+    const id = ++loadId.current;
     try {
-      setEntries(await readAllEntries());
+      const next = await readAllEntries();
+      if (id !== loadId.current) return;
+      setEntries(next);
       setError("");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
+      if (id === loadId.current) {
+        setError(caught instanceof Error ? caught.message : String(caught));
+      }
     }
   }, [readAllEntries]);
   useEffect(() => {
+    const requestState = loadId;
+    const unsubscribe = subscribeWorkspaceFileChanges(window, () => void load());
     void load();
-  }, [load]);
-  useEffect(() => {
-    let timer = 0;
-    const refresh = () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => void load(), 300);
-    };
-    window.addEventListener("llm-hub:file-tree-refresh", refresh);
-    window.addEventListener("llm-hub:dashboard-data-changed", refresh);
     return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("llm-hub:file-tree-refresh", refresh);
-      window.removeEventListener("llm-hub:dashboard-data-changed", refresh);
+      unsubscribe();
+      requestState.current++;
     };
   }, [load]);
   useEffect(() => setVisibleCount(pageSize), [
@@ -3046,7 +3045,9 @@ export function SecretManagerDashboardWidget(
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {},
   );
+  const loadId = useRef(0);
   const load = useCallback(async () => {
+    const id = ++loadId.current;
     try {
       const paths = (await listWorkspaceFiles()).filter((entry) =>
         entry.path.toLowerCase().endsWith(".encrypted") &&
@@ -3062,15 +3063,23 @@ export function SecretManagerDashboardWidget(
           publicMetadata: metadata.publicMetadata || {},
         };
       }));
+      if (id !== loadId.current) return;
       setEntries(values);
       setError("");
     } catch (caught) {
+      if (id !== loadId.current) return;
       setEntries([]);
       setError(caught instanceof Error ? caught.message : String(caught));
     }
   }, [folder]);
   useEffect(() => {
+    const requestState = loadId;
+    const unsubscribe = subscribeWorkspaceFileChanges(window, () => void load());
     void load();
+    return () => {
+      unsubscribe();
+      requestState.current++;
+    };
   }, [load]);
   const metadataRecord = (fields: SecretMetadataField[]) =>
     Object.fromEntries(
