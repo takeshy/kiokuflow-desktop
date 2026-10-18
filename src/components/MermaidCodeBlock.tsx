@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { enqueueMermaidRender } from "../lib/mermaidRender";
+import { renderMermaid } from "../lib/mermaidRender";
 
 export function MermaidCodeBlock({ code, isDark }: { code: string; isDark: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -11,10 +11,11 @@ export function MermaidCodeBlock({ code, isDark }: { code: string; isDark: boole
     void (async () => {
       if (!containerRef.current) return;
       containerRef.current.innerHTML = "";
+      setError(null);
       try {
-        const svg = await enqueueMermaidRender({ chart: code, isDark }, () => cancelled);
-        if (!cancelled && svg && containerRef.current) {
-          containerRef.current.innerHTML = svg;
+        const result = await renderMermaid({ chart: code, isDark }, () => cancelled);
+        if (!cancelled && result && containerRef.current) {
+          containerRef.current.innerHTML = result.svg;
           setError(null);
         }
       } catch (reason) {
@@ -29,13 +30,14 @@ export function MermaidCodeBlock({ code, isDark }: { code: string; isDark: boole
     };
   }, [code, isDark]);
 
-  if (error) {
-    return (
-      <pre className="code-block error-block">
-        <code>{code}</code>
-      </pre>
-    );
-  }
-
-  return <div ref={containerRef} className="mermaid-block" />;
+  return (
+    <>
+      {error && (
+        <pre className="code-block error-block">
+          <code>{code}</code>
+        </pre>
+      )}
+      <div ref={containerRef} style={{ display: error ? "none" : undefined }} className="mermaid-block" />
+    </>
+  );
 }

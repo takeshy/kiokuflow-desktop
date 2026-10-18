@@ -1,3 +1,16 @@
+# GemiHub Desktop v1.10.1
+
+## Changes
+
+- Render Mermaid diagrams with Pele in Markdown previews, workflow diagrams,
+  and the WYSIWYG editor. Diagrams use the app theme and load renderers on demand.
+
+## Fixes
+
+- Refresh the password list automatically after file updates and workspace changes.
+- Prevent older password-list and Timeline loads from overwriting newer results.
+- Restore diagram previews after invalid Mermaid source is corrected.
+
 # GemiHub Desktop v1.10.0
 
 ## What's new

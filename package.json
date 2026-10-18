@@ -1,6 +1,6 @@
 {
   "name": "gemihub-desktop",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -19,8 +19,8 @@
     "highlight.js": "^11.11.1",
     "js-yaml": "^4.1.0",
     "lucide-react": "^0.563.0",
-    "mermaid": "^11.12.2",
     "pdfjs-dist": "^6.1.200",
+    "pele": "^1.6.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0",
@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24.19.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "typescript": "^6.0.3",
