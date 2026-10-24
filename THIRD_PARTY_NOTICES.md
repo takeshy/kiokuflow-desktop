@@ -32,6 +32,7 @@ GemiHub Desktop distributions also bundle the following open-source libraries:
 
 - [React / React DOM](https://react.dev/) — MIT — Copyright (c) Meta Platforms, Inc. and affiliates.
 - [Pele](https://github.com/obsidianmd/pele) — MIT — Copyright (c) 2026 kepano
+- Pele zoom-control reset icon (Lucide v1.14.0) — ISC — Copyright (c) 2026 Lucide Icons and Contributors
 - [react-markdown](https://github.com/remarkjs/react-markdown) — MIT — Copyright (c) Espen Hovlandsdal
 - [remark-gfm](https://github.com/remarkjs/remark-gfm) — MIT — Copyright (c) Titus Wormer <tituswormer@gmail.com>
 - [rehype-highlight](https://github.com/rehypejs/rehype-highlight) — MIT — Copyright (c) Titus Wormer <tituswormer@gmail.com>

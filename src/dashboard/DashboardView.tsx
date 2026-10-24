@@ -686,7 +686,7 @@ export function DashboardView({
   };
   onHistoryCheckpoint: (reason: "reload") => void;
   onDeferredHistoryCheckpoint: (reason: "reload") => void;
-  onActiveFileChange: (file: { path: string; content: string } | null) => void;
+  onActiveFileChange: (file: { path: string; content: string; file?: FileRef } | null) => void;
   onAskAI: (selection: ActiveSelection) => void;
   onAskMemoAI: (draft: string) => void;
   chatSettings: ChatSettings;
@@ -2542,6 +2542,7 @@ export function DashboardView({
       path
         ? {
           path,
+          file: isFileRef(widget.config.file) ? widget.config.file : fileRef("workspace", path),
           content: content && !content.startsWith("data:") &&
               content.length <= 1024 * 1024
             ? content

@@ -1145,7 +1145,7 @@ export default function App() {
   });
   const [discordBusy, setDiscordBusy] = useState(false);
   const [activeChatFile, setActiveChatFile] = useState<
-    { path: string; content: string } | null
+    { path: string; content: string; file?: FileRef } | null
   >(null);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(
     null,
@@ -1572,11 +1572,12 @@ export default function App() {
   }, []);
 
   const handleActiveDashboardFileChange = useCallback(
-    (file: { path: string; content: string } | null) => {
+    (file: { path: string; content: string; file?: FileRef } | null) => {
       const nextFile = file ??
         (activeDashboardPath
           ? {
             path: activeDashboardPath,
+            file: fileRef("workspace", activeDashboardPath),
             content: serializeDashboard(persistenceDashboard(dashboard)),
           }
           : null);
@@ -2487,6 +2488,7 @@ export default function App() {
             <FileTree
               directoryBase={directoryBase}
               workspacePath={workspacePath}
+              activeFile={activeChatFile?.file ?? null}
               externalFocusPath={externalTreeFocusPath}
               onExternalDirectoryChange={async (nextBase, focusPath) => {
                 const selected = await setDirectoryBase(nextBase);

@@ -1,3 +1,18 @@
+# GemiHub Desktop v1.10.2
+
+## What's new
+
+- Added an Explorer-style destination picker to the FileTree context menu for
+  moving files and folders within Workspace or the external Files tree.
+- Added a toolbar action to move selected files to Trash, including multiple
+  selection in Workspace. The existing Trash viewer remains available.
+- Updated wysimark-lite to 1.0.3, which renders Mermaid syntax directly with Pele.
+
+## Fixes
+
+- New files use the selected directory, or the active file's parent when no
+  directory is selected, while keeping Workspace and external Files separate.
+
 # GemiHub Desktop v1.10.1
 
 ## Changes

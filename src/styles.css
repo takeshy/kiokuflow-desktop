@@ -15742,3 +15742,176 @@ body.resizing-modal {
   min-width: 0;
   flex: 1;
 }
+
+/* Folder navigation for same-scope FileTree moves. */
+.tree-move-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: 85dvh;
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 25%);
+}
+.tree-move-dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+.tree-move-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 85dvh;
+}
+.tree-move-dialog header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.tree-move-dialog header strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tree-move-dialog button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 5px;
+  padding: 6px 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+.tree-move-dialog button:hover:enabled {
+  background: var(--panel-subtle);
+}
+.tree-move-dialog button:disabled,
+.file-tree-mode-bar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.tree-move-dialog fieldset {
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow-y: auto;
+}
+.tree-move-navigation {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.tree-move-navigation nav {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.tree-move-navigation nav span {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.tree-move-navigation nav button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.tree-move-hint {
+  margin: 10px 16px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.tree-move-dialog ul {
+  height: 240px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 8px;
+}
+.tree-move-dialog li {
+  display: flex;
+  border-radius: 5px;
+}
+.tree-move-dialog li.selected {
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel));
+}
+.tree-move-dialog li > button:first-child {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 9px 10px;
+}
+.tree-move-dialog li > button:first-child svg {
+  flex-shrink: 0;
+  color: #d69a29;
+}
+.tree-move-dialog li > button:first-child span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tree-move-dialog li.tree-move-empty {
+  display: block;
+  padding: 28px;
+  text-align: center;
+  color: var(--muted);
+}
+.tree-move-dialog footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+.tree-move-destination {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+.tree-move-destination span {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.tree-move-destination strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: normal;
+}
+.tree-move-status {
+  height: 36px;
+  margin: 6px 0;
+  overflow-y: auto;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.tree-move-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.tree-move-actions button {
+  border: 1px solid var(--border);
+}
+.tree-move-actions .primary {
+  background: var(--accent);
+  color: white;
+}
+.tree-move-actions .primary:hover:enabled {
+  background: var(--accent);
+  filter: brightness(1.1);
+}
+.create-file-directory {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}

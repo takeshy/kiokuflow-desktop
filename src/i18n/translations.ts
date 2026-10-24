@@ -352,6 +352,18 @@ export interface TranslationStrings {
   "doc.convertHtml": string;
 
   // Workspace file tree / encryption
+  "files.trashSelection": string;
+  "files.trashConfirm": string;
+  "files.moveToFolder": string;
+  "files.moveFolderTitle": string;
+  "files.moveFolderHint": string;
+  "files.parentFolder": string;
+  "files.openFolder": string;
+  "files.noSubfolders": string;
+  "files.moveIssue.sameFolder": string;
+  "files.moveIssue.descendant": string;
+  "files.moveIssue.nameConflict": string;
+  "files.moveIssue.missing": string;
   "files.workspaceExternal": string;
   "files.showParentDirectory": string;
   "files.memoMoveFailed": string;
@@ -832,6 +844,18 @@ const en: TranslationStrings = {
     "Open in browser (you can save as PDF from the browser's print dialog)",
   "doc.convertHtml": "Convert to HTML",
 
+  "files.trashSelection": "Move selected files to Trash",
+  "files.trashConfirm": "Move {count} selected file(s) to Trash?",
+  "files.moveToFolder": "Move…",
+  "files.moveFolderTitle": "Move \"{name}\"",
+  "files.moveFolderHint": "Select a destination. Double-click a folder or use its arrow to open it.",
+  "files.parentFolder": "Up one folder",
+  "files.openFolder": "Open {name}",
+  "files.noSubfolders": "No subfolders",
+  "files.moveIssue.sameFolder": "Choose a different folder from the current location.",
+  "files.moveIssue.descendant": "A folder cannot be moved into itself or its subfolders.",
+  "files.moveIssue.nameConflict": "An item with the same name already exists in this folder.",
+  "files.moveIssue.missing": "The source or destination no longer exists.",
   "files.workspaceExternal": "Outside Workspace",
   "files.showParentDirectory": "Show parent directory",
   "files.memoMoveFailed":
@@ -1305,6 +1329,18 @@ const ja: TranslationStrings = {
   "doc.openHtmlBrowser": "ブラウザで開く（ブラウザの印刷からPDF保存できます）",
   "doc.convertHtml": "HTMLに変換",
 
+  "files.trashSelection": "選択したファイルをごみ箱に移動",
+  "files.trashConfirm": "選択した{count}件のファイルをごみ箱に移動しますか？",
+  "files.moveToFolder": "移動…",
+  "files.moveFolderTitle": "「{name}」を移動",
+  "files.moveFolderHint": "移動先を選択してください。ダブルクリックまたは右の矢印でフォルダを開けます。",
+  "files.parentFolder": "上のフォルダへ",
+  "files.openFolder": "{name}を開く",
+  "files.noSubfolders": "サブフォルダなし",
+  "files.moveIssue.sameFolder": "現在の場所とは別のフォルダを選択してください。",
+  "files.moveIssue.descendant": "フォルダ自身や、その配下には移動できません。",
+  "files.moveIssue.nameConflict": "移動先に同じ名前の項目があります。",
+  "files.moveIssue.missing": "移動元または移動先が見つかりません。",
   "files.workspaceExternal": "Workspace外",
   "files.showParentDirectory": "親ディレクトリを開く",
   "files.memoMoveFailed":

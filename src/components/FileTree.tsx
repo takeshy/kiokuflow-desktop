@@ -17,6 +17,7 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
+  FolderInput,
   FolderSearch,
   GitCompareArrows,
   History,
@@ -24,18 +25,23 @@ import {
   Pencil,
   RefreshCw,
   RotateCcw,
+  ArchiveRestore,
   Search,
   Trash2,
   X,
 } from "lucide-react";
+import { MoveToFolderDialog } from "./MoveToFolderDialog";
 import { EncryptedFileModal } from "./EncryptedFileModal";
 import { useI18n } from "../i18n/context";
 import { encryptWorkspaceFile } from "../lib/fileEncryption";
 import { isEncryptedFile } from "../lib/hybridEncryption";
 import {
   absoluteFilesPath,
+  defaultCreateDirectory,
   canMoveWorkspacePath,
   filesystemParentPath,
+  findTreeNode,
+  treeMoveIssue,
   type FileTreeScope,
   focusedExternalTree,
   isProtectedWorkspaceRoot,
@@ -128,11 +134,11 @@ function visibleTree(nodes: FileTreeNode[], query: string): FileTreeNode[] {
   });
 }
 
-function treeFilePaths(nodes: FileTreeNode[], expanded: Set<string>): string[] {
+function treeFilePaths(nodes: FileTreeNode[], expanded: Set<string>, scope: TreeMode = "files"): string[] {
   return nodes.flatMap((node) =>
     node.isDir
-      ? expanded.has(`files:${node.path}`)
-        ? treeFilePaths(node.children ?? [], expanded)
+      ? expanded.has(`${scope}:${node.path}`)
+        ? treeFilePaths(node.children ?? [], expanded, scope)
         : []
       : [node.path]
   );
@@ -165,8 +171,10 @@ function TreeRow({
   onDragExternal,
   onDropExternal,
   externalSelection,
+  workspaceSelection,
+  selectedDirectory,
   selectedPath,
-  onExternalFileClick,
+  onFileClick,
   onPointerDragStart,
   shouldSuppressClick,
   externalDropTarget,
@@ -185,8 +193,10 @@ function TreeRow({
   onDragExternal?: (node: FileTreeNode, file: FileRef | null) => void;
   onDropExternal?: (directory: string, fallbackPayload?: string) => void;
   externalSelection?: Set<string>;
+  workspaceSelection?: Set<string>;
+  selectedDirectory?: FileRef | null;
   selectedPath?: string | null;
-  onExternalFileClick?: (
+  onFileClick?: (
     node: FileTreeNode,
     file: FileRef,
     event: MouseEvent,
@@ -243,10 +253,10 @@ function TreeRow({
         className={`file-tree-row ${scope === "files" ? "external" : ""} ${
           scope === "files"
             ? externalSelection?.has(node.path) ? "selected" : ""
-            : !node.isDir && selectedPath === node.path
+            : workspaceSelection?.has(node.path) || (!node.isDir && selectedPath === node.path)
             ? "selected"
             : ""
-        } ${
+        } ${node.isDir && selectedDirectory?.scope === scope && selectedDirectory.path === node.path ? "selected" : ""} ${
           scope === "workspace" && node.isDir &&
             externalDropTarget === node.path
             ? "external-drop-target"
@@ -317,8 +327,8 @@ function TreeRow({
             if (shouldSuppressClick?.()) return;
             node.isDir
               ? onToggle(node.path)
-              : scope === "files" && onExternalFileClick
-              ? onExternalFileClick(node, ref(node.path), event)
+              : onFileClick
+              ? onFileClick(node, ref(node.path), event)
               : onOpen(ref(node.path));
           }}
           title={node.path}
@@ -401,8 +411,10 @@ function TreeRow({
           onDragExternal={onDragExternal}
           onDropExternal={onDropExternal}
           externalSelection={externalSelection}
+          workspaceSelection={workspaceSelection}
+          selectedDirectory={selectedDirectory}
           selectedPath={selectedPath}
-          onExternalFileClick={onExternalFileClick}
+          onFileClick={onFileClick}
           onPointerDragStart={onPointerDragStart}
           shouldSuppressClick={shouldSuppressClick}
           externalDropTarget={externalDropTarget}
@@ -418,6 +430,7 @@ function TreeRow({
 export function FileTree({
   directoryBase,
   workspacePath,
+  activeFile,
   externalFocusPath,
   onOpenFile,
   onOpenFileInNewWidget,
@@ -428,6 +441,7 @@ export function FileTree({
 }: {
   directoryBase: string;
   workspacePath: string;
+  activeFile: FileRef | null;
   externalFocusPath: string;
   onOpenFile: (file: FileRef, created?: boolean) => void;
   onOpenFileInNewWidget: (file: FileRef) => void;
@@ -453,6 +467,7 @@ export function FileTree({
   const [query, setQuery] = useState("");
   const [createFileDialog, setCreateFileDialog] = useState<
     {
+      scope: TreeMode;
       directory: string;
       name: string;
       extension: string;
@@ -465,6 +480,11 @@ export function FileTree({
     new Set(),
   );
   const [lastSelectedExternal, setLastSelectedExternal] = useState("");
+  const [workspaceSelection, setWorkspaceSelection] = useState<Set<string>>(new Set());
+  const [lastSelectedWorkspace, setLastSelectedWorkspace] = useState("");
+  const [selectedDirectory, setSelectedDirectory] = useState<FileRef | null>(null);
+  const [trashBusy, setTrashBusy] = useState(false);
+  const [moveTarget, setMoveTarget] = useState<{ node: FileTreeNode; file: FileRef } | null>(null);
   const [draggedExternal, setDraggedExternal] = useState<
     Array<{ node: FileTreeNode; file: FileRef }>
   >([]);
@@ -626,7 +646,11 @@ export function FileTree({
   }, []);
   useEffect(() => {
     setExternalSelection(new Set());
-  }, [directoryBase]);
+    setWorkspaceSelection(new Set());
+    setSelectedDirectory(null);
+    setSelectedWorkspacePath(null);
+    setMoveTarget(null);
+  }, [directoryBase, workspacePath]);
   useEffect(() => {
     const listener = () => {
       if (suppressNextRefreshRef.current) {
@@ -672,6 +696,13 @@ export function FileTree({
     () => treeFilePaths(focusedExternal, expanded),
     [expanded, focusedExternal],
   );
+  const visibleWorkspaceFilePaths = useMemo(
+    () => treeFilePaths(filtered, expanded, "workspace"), [filtered, expanded],
+  );
+  const selectedFiles = [
+    ...Array.from(workspaceSelection).filter((path) => findTreeNode(workspaceNodes, path)?.isDir === false).map((path) => fileRef("workspace", path)),
+    ...Array.from(externalSelection).filter((path) => findTreeNode(nodes, path)?.isDir === false).map((path) => fileRef("files", path)),
+  ];
   const visibleContentResults = contentResults;
   const rootName = directoryBase.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ||
     directoryBase;
@@ -762,44 +793,85 @@ export function FileTree({
     setDraggedWorkspace(null);
     setExternalDropTarget(null);
   };
+  const moveTreeItem = async (
+    node: FileTreeNode,
+    source: FileRef,
+    destination: string,
+  ) => {
+    const scope = source.scope as TreeMode;
+    const issue = treeMoveIssue(
+      scope === "workspace" ? workspaceNodes : nodes,
+      source.path,
+      destination,
+    );
+    if (issue) throw new Error(tr(`files.moveIssue.${issue}`));
+    const target = workspaceMoveTarget(source.path, destination);
+    await renameFileRef(source, fileRef(scope, target));
+    try {
+      await relocateWorkspaceMemos([
+        {
+          sourcePaths:
+            scope === "workspace"
+              ? [source.path, fileRefBackendPath(source)]
+              : [
+                  source.path,
+                  fileRefBackendPath(source),
+                  absoluteFilesPath(directoryBase, source.path),
+                ],
+          destinationPath:
+            scope === "workspace"
+              ? target
+              : absoluteFilesPath(directoryBase, target),
+          isDirectory: node.isDir,
+        },
+      ]);
+    } catch (memoError) {
+      alert(
+        tr("files.memoMoveFailed").replace(
+          "{error}",
+          memoError instanceof Error ? memoError.message : String(memoError),
+        ),
+      );
+    }
+    const remap = (path: string) =>
+      path === source.path || (node.isDir && path.startsWith(`${source.path}/`))
+        ? `${target}${path.slice(source.path.length)}`
+        : path;
+    const setSelection =
+      scope === "workspace" ? setWorkspaceSelection : setExternalSelection;
+    setSelection((current) => new Set(Array.from(current, remap)));
+    if (scope === "workspace")
+      setSelectedWorkspacePath((current) => (current ? remap(current) : current));
+    setSelectedDirectory((current) =>
+      current?.scope === scope ? fileRef(scope, remap(current.path)) : current,
+    );
+    setExpanded((current) => {
+      const next = new Set(current);
+      const parts = destination.split("/").filter((part) => part && part !== ".");
+      for (let index = 0; index < parts.length; index++)
+        next.add(`${scope}:${parts.slice(0, index + 1).join("/")}`);
+      return next;
+    });
+    await reload();
+    if (
+      !node.isDir &&
+      (scope === "workspace" ? workspaceSelection : externalSelection).has(
+        source.path,
+      )
+    )
+      onOpenFile(fileRef(scope, target));
+    window.dispatchEvent(new Event("llm-hub:file-tree-refresh"));
+  };
   const requestWorkspaceDrop = async (destination: string) => {
     const dragged = draggedWorkspaceRef.current;
+    clearWorkspaceMove();
     if (
       !dragged ||
-      !canMoveWorkspacePath(
-        dragged.file.path,
-        dragged.node.isDir,
-        destination,
-      )
-    ) {
-      clearWorkspaceMove();
+      !canMoveWorkspacePath(dragged.file.path, dragged.node.isDir, destination)
+    )
       return;
-    }
-    const target = workspaceMoveTarget(dragged.file.path, destination);
-    clearWorkspaceMove();
     try {
-      await renameFileRef(dragged.file, fileRef("workspace", target));
-      try {
-        await relocateWorkspaceMemos([{
-          sourcePaths: [dragged.file.path],
-          destinationPath: target,
-          isDirectory: dragged.node.isDir,
-        }]);
-      } catch (memoError) {
-        alert(
-          tr("files.memoMoveFailed").replace(
-            "{error}",
-            memoError instanceof Error ? memoError.message : String(memoError),
-          ),
-        );
-      }
-      if (destination) {
-        setExpanded((current) =>
-          new Set(current).add(`workspace:${destination}`)
-        );
-      }
-      await reload();
-      window.dispatchEvent(new Event("llm-hub:file-tree-refresh"));
+      await moveTreeItem(dragged.node, dragged.file, destination);
     } catch (error) {
       alert(error instanceof Error ? error.message : String(error));
       await reload();
@@ -846,40 +918,62 @@ export function FileTree({
       document.removeEventListener("drop", drop, true);
     };
   });
-  const selectExternalFile = (
+  const selectTreeFile = (
     node: FileTreeNode,
     file: FileRef,
     event: MouseEvent,
   ) => {
     const path = file.path;
+    const workspace = file.scope === "workspace";
+    const setSelection = workspace ? setWorkspaceSelection : setExternalSelection;
+    const setLastSelected = workspace
+      ? setLastSelectedWorkspace
+      : setLastSelectedExternal;
+    const lastSelected = workspace ? lastSelectedWorkspace : lastSelectedExternal;
+    const visiblePaths = workspace
+      ? visibleWorkspaceFilePaths
+      : visibleExternalFilePaths;
+    setSelectedDirectory(null);
+    setSelectedWorkspacePath(null);
+    (workspace ? setExternalSelection : setWorkspaceSelection)(new Set());
     if (event.ctrlKey || event.metaKey) {
-      setExternalSelection((current) => {
+      setSelection((current) => {
         const next = new Set(current);
         if (next.has(path)) next.delete(path);
         else next.add(path);
         return next;
       });
-      setLastSelectedExternal(path);
+      setLastSelected(path);
       return;
     }
-    if (event.shiftKey && lastSelectedExternal) {
-      const start = visibleExternalFilePaths.indexOf(lastSelectedExternal);
-      const end = visibleExternalFilePaths.indexOf(path);
+    if (event.shiftKey && lastSelected) {
+      const start = visiblePaths.indexOf(lastSelected);
+      const end = visiblePaths.indexOf(path);
       if (start >= 0 && end >= 0) {
-        setExternalSelection(
+        setSelection(
           new Set(
-            visibleExternalFilePaths.slice(
-              Math.min(start, end),
-              Math.max(start, end) + 1,
-            ),
+            visiblePaths.slice(Math.min(start, end), Math.max(start, end) + 1),
           ),
         );
+        return;
       }
-      return;
     }
-    setExternalSelection(new Set([path]));
-    setLastSelectedExternal(path);
+    setSelection(new Set([path]));
+    setLastSelected(path);
     openTreeFile(file);
+  };
+  const toggleDirectory = (scope: TreeMode, path: string) => {
+    setSelectedDirectory(fileRef(scope, path));
+    setWorkspaceSelection(new Set());
+    setExternalSelection(new Set());
+    setSelectedWorkspacePath(null);
+    setExpanded((current) => {
+      const next = new Set(current);
+      const key = `${scope}:${path}`;
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   };
   const startPointerDrag = (
     node: FileTreeNode,
@@ -1035,7 +1129,10 @@ export function FileTree({
   }, [contextMenu]);
 
   const openTreeFile = (file: FileRef) => {
-    if (file.scope === "workspace") setSelectedWorkspacePath(file.path);
+    setSelectedDirectory(null);
+    setSelectedWorkspacePath(file.scope === "workspace" ? file.path : null);
+    setWorkspaceSelection(new Set(file.scope === "workspace" ? [file.path] : []));
+    setExternalSelection(new Set(file.scope === "files" ? [file.path] : []));
     if (file.path.toLowerCase().endsWith(".encrypted")) {
       setEncryptedModalFile(file);
       return;
@@ -1254,10 +1351,58 @@ export function FileTree({
     }
   };
 
-  const createAtRoot = async (kind: "file" | "folder") => {
+  const trashSelectedFiles = async () => {
+    if (
+      trashBusy ||
+      !selectedFiles.length ||
+      !confirm(
+        tr("files.trashConfirm").replace("{count}", String(selectedFiles.length)),
+      )
+    )
+      return;
+    setTrashBusy(true);
+    const deleted = new Set<string>();
+    try {
+      for (const file of selectedFiles) {
+        await trashFileRef(file);
+        deleted.add(fileRefBackendPath(file));
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error));
+    } finally {
+      setWorkspaceSelection(
+        (current) =>
+          new Set(
+            Array.from(current).filter(
+              (path) =>
+                !deleted.has(fileRefBackendPath(fileRef("workspace", path))),
+            ),
+          ),
+      );
+      setExternalSelection(
+        (current) =>
+          new Set(
+            Array.from(current).filter(
+              (path) => !deleted.has(fileRefBackendPath(fileRef("files", path))),
+            ),
+          ),
+      );
+      setSelectedWorkspacePath((current) =>
+        current && deleted.has(fileRefBackendPath(fileRef("workspace", current)))
+          ? null
+          : current,
+      );
+      await reload();
+      setTrashBusy(false);
+      window.dispatchEvent(new Event("llm-hub:file-tree-refresh"));
+    }
+  };
+  const createInSelectedDirectory = async (kind: "file" | "folder") => {
+    const destination = defaultCreateDirectory(selectedDirectory, activeFile, workspacePath, directoryBase);
     if (kind === "file") {
       setCreateFileDialog({
-        directory: "",
+        scope: destination.scope as TreeMode,
+        directory: destination.path,
         name: "",
         extension: ".md",
         customExtension: "",
@@ -1270,7 +1415,7 @@ export function FileTree({
     )?.trim();
     if (!name) return;
     try {
-      await createDirectoryRef(fileRef("workspace", name));
+      await createDirectoryRef(fileRef(destination.scope, joinPath(destination.path, name)));
       await reload();
     } catch (error) {
       alert(error instanceof Error ? error.message : String(error));
@@ -1293,12 +1438,16 @@ export function FileTree({
         ? baseName
         : `${baseName}${normalizedExtension}`;
     const file = fileRef(
-      "workspace",
+      createFileDialog.scope,
       joinPath(createFileDialog.directory, name),
     );
     try {
       await writeFileRef(file, "");
       setCreateFileDialog(null);
+      setSelectedDirectory(null);
+      setSelectedWorkspacePath(file.scope === "workspace" ? file.path : null);
+      setWorkspaceSelection(new Set(file.scope === "workspace" ? [file.path] : []));
+      setExternalSelection(new Set(file.scope === "files" ? [file.path] : []));
       await reload();
       onOpenFile(file, true);
     } catch (error) {
@@ -1329,24 +1478,33 @@ export function FileTree({
           <>
             <button
               type="button"
-              onClick={() => void createAtRoot("file")}
+              onClick={() => void createInSelectedDirectory("file")}
               title="New file"
             >
               <FilePlus2 size={15} />
             </button>
             <button
               type="button"
-              onClick={() => void createAtRoot("folder")}
+              onClick={() => void createInSelectedDirectory("folder")}
               title="New folder"
             >
               <FolderPlus size={15} />
             </button>
             <button
               type="button"
+              onClick={() => void trashSelectedFiles()}
+              title={tr("files.trashSelection")}
+              aria-label={tr("files.trashSelection")}
+              disabled={trashBusy || selectedFiles.length === 0}
+            >
+              <Trash2 size={15} />
+            </button>
+            <button
+              type="button"
               onClick={() => void listTrash().then(setTrashDialog)}
               title="Trash"
             >
-              <Trash2 size={15} />
+              <ArchiveRestore size={15} />
             </button>
           </>
         )}
@@ -1443,17 +1601,11 @@ export function FileTree({
                   node={node}
                   depth={0}
                   expanded={expanded}
-                  onToggle={(path) =>
-                    setExpanded((current) => {
-                      const next = new Set(current);
-                      const key = `workspace:${path}`;
-                      if (next.has(key)) next.delete(key);
-                      else next.add(key);
-                      return next;
-                    })}
+                  onToggle={(path) => toggleDirectory("workspace", path)}
                   onOpen={openTreeFile}
                   onCreateFile={(directory) =>
                     setCreateFileDialog({
+                      scope: "workspace",
                       directory,
                       name: "",
                       extension: ".md",
@@ -1463,6 +1615,9 @@ export function FileTree({
                   onDropExternal={requestExternalDrop}
                   externalDropTarget={externalDropTarget}
                   selectedPath={selectedWorkspacePath}
+                  workspaceSelection={workspaceSelection}
+                  selectedDirectory={selectedDirectory}
+                  onFileClick={selectTreeFile}
                   onPointerDragStart={startPointerDrag}
                   shouldSuppressClick={() =>
                     Date.now() < suppressExternalClickUntilRef.current}
@@ -1554,20 +1709,14 @@ export function FileTree({
                     node={node}
                     depth={0}
                     expanded={expanded}
-                    onToggle={(path) =>
-                      setExpanded((current) => {
-                        const next = new Set(current);
-                        const key = `files:${path}`;
-                        if (next.has(key)) next.delete(key);
-                        else next.add(key);
-                        return next;
-                      })}
+                    onToggle={(path) => toggleDirectory("files", path)}
                     onOpen={openTreeFile}
-                    onCreateFile={() => undefined}
+                    onCreateFile={(directory) => setCreateFileDialog({ scope: "files", directory, name: "", extension: ".md", customExtension: "" })}
                     onMutated={() => void reload()}
                     onDragExternal={beginExternalMove}
                     externalSelection={externalSelection}
-                    onExternalFileClick={selectExternalFile}
+                    selectedDirectory={selectedDirectory}
+                    onFileClick={selectTreeFile}
                     onPointerDragStart={startPointerDrag}
                     shouldSuppressClick={() =>
                       Date.now() < suppressExternalClickUntilRef.current}
@@ -1640,6 +1789,11 @@ export function FileTree({
               <FolderOpen size={14} />Move into Workspace…
             </button>
           )}
+          {contextMenu.file.path !== "." && !(contextMenu.file.scope === "workspace" && !contextMenu.node.path.includes("/") && isProtectedWorkspaceRoot(contextMenu.node, 0)) && (
+            <button type="button" onClick={() => { setMoveTarget({ node: contextMenu.node, file: contextMenu.file }); setContextMenu(null); }}>
+              <FolderInput size={14} />{tr("files.moveToFolder")}
+            </button>
+          )}
           {!contextMenu.node.isDir && (
             <>
               <button type="button" onClick={openInNewWidgetFromMenu}>
@@ -1678,6 +1832,16 @@ export function FileTree({
           </button>
         </div>
       )}
+      {moveTarget && (
+        <MoveToFolderDialog
+          key={`${moveTarget.file.scope}:${moveTarget.file.path}`}
+          item={moveTarget.node}
+          nodes={moveTarget.file.scope === "workspace" ? workspaceNodes : nodes}
+          rootName={moveTarget.file.scope === "workspace" ? "Workspace" : rootName}
+          onMove={(destination) => moveTreeItem(moveTarget.node, moveTarget.file, destination)}
+          onClose={() => setMoveTarget(null)}
+        />
+      )}
       {createFileDialog && (
         <div
           className="encrypted-file-modal-backdrop"
@@ -1693,6 +1857,7 @@ export function FileTree({
               </button>
             </header>
             <div>
+              <p className="create-file-directory">{createFileDialog.scope === "workspace" ? "Workspace" : rootName} / {createFileDialog.directory === "." ? "" : createFileDialog.directory}</p>
               <label>
                 <span>File name</span>
                 <input
