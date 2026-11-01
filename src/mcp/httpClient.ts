@@ -97,7 +97,7 @@ function responseResult(
 
 export const MCP_PROTOCOL_VERSION = "2026-07-28";
 const LEGACY_PROTOCOL_VERSION = "2025-11-25";
-const CLIENT_INFO = { name: "gemihub-desktop", version: "1.1.0" } as const;
+const CLIENT_INFO = { name: "kiokuflow-desktop", version: "1.1.0" } as const;
 /**
  * MCP Apps interop: servers only offer HTML app resources to clients that
  * declare they can render them.

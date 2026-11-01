@@ -1,3 +1,3 @@
-export const APP_NAME = "GemiHub Desktop";
-export const APP_ID = "gemihub-desktop";
-export const APP_VERSION = "0.15.3";
+export const APP_NAME = "kiokuflow-desktop";
+export const APP_ID = "kiokuflow-desktop";
+export const APP_VERSION = "1.10.3";

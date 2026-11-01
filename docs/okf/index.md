@@ -1,6 +1,6 @@
-# GemiHub Desktop 機能ガイド
+# kiokuflow-desktop 機能ガイド
 
-このOKFバンドルは、GemiHub Desktopのユーザー向け機能、設定方法、主要な制約をまとめたものです。チャットで操作方法を回答するときは、該当する機能ページを優先して参照してください。
+このOKFバンドルは、kiokuflow-desktopのユーザー向け機能、設定方法、主要な制約をまとめたものです。チャットで操作方法を回答するときは、該当する機能ページを優先して参照してください。
 
 ## 最初に行うこと
 
@@ -26,7 +26,7 @@ DashboardやWorkflow、pluginなどのアプリ資産を置く場所がWorkspace
 
 ## このバンドルの有効化
 
-配布版では、このガイドは `GemiHub Desktop Help` というbuilt-in bundleとして常に利用できます。Chat入力欄の本アイコンから選ぶと、会話のcurated contextとして参照されます。source checkoutのMarkdownを外部bundleとして確認するときだけ、このリポジトリをFiles directoryにし、`Settings > Local retrieval > OKF knowledge bundles`のrootへ `docs/okf` を設定します。
+配布版では、このガイドは `kiokuflow-desktop Help` というbuilt-in bundleとして常に利用できます。Chat入力欄の本アイコンから選ぶと、会話のcurated contextとして参照されます。source checkoutのMarkdownを外部bundleとして確認するときだけ、このリポジトリをFiles directoryにし、`Settings > Local retrieval > OKF knowledge bundles`のrootへ `docs/okf` を設定します。
 
 ## ワークスペースとドキュメント
 

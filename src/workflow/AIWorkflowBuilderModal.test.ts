@@ -57,6 +57,7 @@ test("workflow generation receives only configured runtime names", () => {
       vertexOAuthClientSecret: "",
       enabledModels: ["configured-model"],
       availableModels: ["configured-model"],
+      modelsVerified: true,
       enabled: true,
       local: false,
       openAICompatible: false,
@@ -82,8 +83,6 @@ test("workflow generation receives only configured runtime names", () => {
     }],
   }, "dialog-selected-model");
   assertEquals(context.models, [
-    "dialog-selected-model",
-    "settings-model",
     "configured-model",
   ]);
   assertEquals(context.ragSettings, ["docs"]);

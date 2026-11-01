@@ -1,6 +1,6 @@
 {
-  "name": "gemihub-desktop",
-  "version": "1.10.2",
+  "name": "kiokuflow-desktop",
+  "version": "1.10.3",
   "private": true,
   "type": "module",
   "scripts": {

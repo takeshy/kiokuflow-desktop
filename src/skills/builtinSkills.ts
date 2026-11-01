@@ -26,7 +26,7 @@ const WORKSPACE_MARKDOWN: BuiltinSkillDefinition = {
   description: "Create and edit GFM Markdown with wikilinks, image embeds, callouts, frontmatter properties, and tags. Use when working with .md files or these extensions.",
   instructions: `# Extended Markdown Skill
 
-Create and edit the extended Markdown supported by GemiHub Desktop. In addition to CommonMark and GFM, the workspace recognizes wikilinks, image embeds, callouts, frontmatter properties, and tags. Standard Markdown syntax is assumed knowledge.
+Create and edit the extended Markdown supported by kiokuflow-desktop. In addition to CommonMark and GFM, the workspace recognizes wikilinks, image embeds, callouts, frontmatter properties, and tags. Standard Markdown syntax is assumed knowledge.
 
 ## Workflow: Creating a Markdown Note
 
@@ -94,7 +94,7 @@ Tags can contain letters, numbers (not first character), underscores, hyphens, a
 
 ## Compatibility Notes
 
-Obsidian comments (\`%%...%%\`), highlights (\`==...==\`), LaTeX math, footnotes, block IDs, heading-target navigation, foldable callouts, note/section embeds, and PDF page embeds are not rendered as special syntax by GemiHub Desktop. Use ordinary Markdown or HTML when the visual result matters.`,
+Obsidian comments (\`%%...%%\`), highlights (\`==...==\`), LaTeX math, footnotes, block IDs, heading-target navigation, foldable callouts, note/section embeds, and PDF page embeds are not rendered as special syntax by kiokuflow-desktop. Use ordinary Markdown or HTML when the visual result matters.`,
   references: [
     `[CALLOUTS.md]
 # Callouts Reference
@@ -235,7 +235,7 @@ A canvas file (\`.canvas\`) contains two top-level arrays following the JSON Can
 |-----------|----------|-------------|
 | \`label\` | No | Text label for the group |
 
-GemiHub Desktop preserves JSON Canvas fields it does not edit. Group backgrounds and file-node subpaths are currently round-tripped but are not rendered by the Canvas UI.
+kiokuflow-desktop preserves JSON Canvas fields it does not edit. Group backgrounds and file-node subpaths are currently round-tripped but are not rendered by the Canvas UI.
 
 ## Edges
 
@@ -325,7 +325,7 @@ const BASE: BuiltinSkillDefinition = {
 
 Create Bases (\`.base\`) files that display dynamic, filtered views of workspace content.
 
-GemiHub Desktop supports table, cards, and list views. Map views and Markdown embedding of a Base are not currently supported.
+kiokuflow-desktop supports table, cards, and list views. Map views and Markdown embedding of a Base are not currently supported.
 
 ## Workflow
 
@@ -922,7 +922,7 @@ Sort direction depends on property type:
 - Number: 0->1 or 1->0
 - Date: old->new or new->old
 
-## GemiHub Desktop UI
+## kiokuflow-desktop UI
 
 The Base editor can create, rename, duplicate, delete, and switch views; edit filters, sort/group rules, visible properties, formulas, and summaries; search the displayed result; and change table/card/list presentation options. Map views and Markdown embedding of a Base are not currently supported.`,
   ],
@@ -935,10 +935,10 @@ The Base editor can create, rename, duplicate, delete, and switch views; edit fi
 const DASHBOARD: BuiltinSkillDefinition = {
   id: "dashboard",
   name: "dashboard",
-  description: "Create GemiHub Desktop dashboards (.dashboard files): a grid of widgets that embed Bases views, files, memos, workflows, and web pages. Use when the user asks for a dashboard, home page, overview, or a grid of workspace resources.",
+  description: "Create kiokuflow-desktop dashboards (.dashboard files): a grid of widgets that embed Bases views, files, memos, workflows, and web pages. Use when the user asks for a dashboard, home page, overview, or a grid of workspace resources.",
   instructions: `# Dashboard Skill
 
-Create \`.dashboard\` files for GemiHub Desktop: a grid of widgets that embed
+Create \`.dashboard\` files for kiokuflow-desktop: a grid of widgets that embed
 **Bases** views, workspace files, memos, workflows, and web pages. Opening a \`.dashboard\`
 file shows an editable widget grid (drag/resize in edit mode).
 

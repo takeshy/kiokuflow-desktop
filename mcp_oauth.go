@@ -165,10 +165,10 @@ func (a *App) ConnectMCPOAuth(request MCPOAuthConnectRequest) (*MCPOAuthStatus, 
 		response.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if result.err != "" {
 			response.WriteHeader(http.StatusBadRequest)
-			_, _ = io.WriteString(response, "<!doctype html><meta charset=utf-8><title>GemiHub Desktop</title><p>Authorization failed. You can close this window and return to GemiHub Desktop.</p>")
+			_, _ = io.WriteString(response, "<!doctype html><meta charset=utf-8><title>kiokuflow-desktop</title><p>Authorization failed. You can close this window and return to kiokuflow-desktop.</p>")
 			return
 		}
-		_, _ = io.WriteString(response, "<!doctype html><meta charset=utf-8><title>GemiHub Desktop</title><p>Authorization completed. You can close this window and return to GemiHub Desktop.</p>")
+		_, _ = io.WriteString(response, "<!doctype html><meta charset=utf-8><title>kiokuflow-desktop</title><p>Authorization completed. You can close this window and return to kiokuflow-desktop.</p>")
 	})
 	go func() { _ = server.Serve(listener) }()
 	if err := a.openURL(discovery.Config.AuthorizationURL + "?" + values.Encode()); err != nil {
@@ -270,7 +270,7 @@ func discoverMCPOAuth(serverURL string) (*mcpOAuthDiscovery, error) {
 	if err != nil {
 		return nil, err
 	}
-	probeBody := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"gemihub-desktop-oauth-probe","version":"0.1.0"}}}`
+	probeBody := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"kiokuflow-desktop-oauth-probe","version":"0.1.0"}}}`
 	probe, err := newMCPOAuthRequest(http.MethodPost, server.String(), strings.NewReader(probeBody))
 	if err != nil {
 		return nil, err

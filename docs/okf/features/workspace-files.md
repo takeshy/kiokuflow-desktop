@@ -6,7 +6,7 @@ tags: [workspace, files, directory, settings]
 timestamp: 2026-07-20T00:00:00+09:00
 ---
 
-GemiHub Desktopは、常に1つのWorkspaceを使用します。Workspaceの切り替え一覧やsession-only modeはありません。変更が必要な場合だけ `Settings > General > Workspace directory` でpathを選び直します。
+kiokuflow-desktopは、常に1つのWorkspaceを使用します。Workspaceの切り替え一覧やsession-only modeはありません。変更が必要な場合だけ `Settings > General > Workspace directory` でpathを選び直します。
 
 新規インストール時の既定値は、ExplorerやFinderからファイルを移動しやすいユーザーの `Documents/GemiHub Workspace` です。
 

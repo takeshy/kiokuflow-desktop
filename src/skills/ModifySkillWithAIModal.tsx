@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, RefreshCw, Sparkles, X } from "lucide-react";
 import { chat, readWorkspaceFile as readWorkspaceFile, writeWorkspaceFile as writeWorkspaceFile } from "../lib/wailsBackend";
 import {
-  chatModelChoices,
+  configuredModelOptions,
   type ChatProvider,
   type ChatSettings,
   configuredChatProviders,
-  providerDefaults,
   settingsForModel,
   switchChatProvider,
 } from "../llm/settings";
@@ -342,7 +341,7 @@ export function ModifySkillWithAIModal(
                   onChange={(event) => {
                     const next = event.target.value as ChatProvider;
                     setProvider(next);
-                    setModel(providerDefaults(next).model);
+                    setModel(configuredModelOptions(settings).find(option => option.provider === next)?.model || "");
                   }}
                 >
                   {configured.map((value) => (
@@ -356,17 +355,9 @@ export function ModifySkillWithAIModal(
                   value={model}
                   onChange={(event) => setModel(event.target.value)}
                 >
-                  {[
-                    ...new Set([
-                      model,
-                      ...(provider === "cli" ? [] : [
-                        ...settings.modelProfiles.filter((item) =>
-                          item.provider === provider && item.enabled
-                        ).flatMap((item) => item.enabledModels),
-                        ...chatModelChoices[provider],
-                      ]),
-                    ]),
-                  ].filter(Boolean).map((value) => (
+                  {[...new Set(configuredModelOptions(settings)
+                    .filter(option => option.provider === provider).map(option => option.model))]
+                    .filter(Boolean).map(value => (
                     <option key={value}>{value}</option>
                   ))}
                 </select>

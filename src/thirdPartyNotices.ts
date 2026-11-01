@@ -32,7 +32,7 @@ License: MIT — Copyright (c) 2024 Obsidian.md
 
 Bundled Dependencies
 
-GemiHub Desktop distributions also bundle the following open-source libraries:
+kiokuflow-desktop distributions also bundle the following open-source libraries:
 
 - React / React DOM (https://react.dev/) — MIT — Copyright (c) Meta Platforms, Inc. and affiliates.
 - Pele (https://github.com/obsidianmd/pele) — MIT — Copyright (c) 2026 kepano

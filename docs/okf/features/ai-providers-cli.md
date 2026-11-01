@@ -10,7 +10,7 @@ timestamp: 2026-07-15T00:00:00+09:00
 providerはOpenAI compatible、Google Gemini、Vertex
 AI、Anthropicに対応します。providerごとのprofileは保持されるため、切り替えて使えます。
 
-ChatではOpenAI GPT-6 AstraとGPT-5.6ファミリーを選択できます。公式OpenAI
+ChatではOpenAI GPT-6 AstraとGPT-6.1ファミリーを選択できます。公式OpenAI
 API、およびGemini 3系/Vertex AIではモデル選択欄の横からReasoning
 effortを指定します。`default`はprovider既定、OpenAIの`none`は推論なしです。完全に推論を無効化できないGeminiでは`none / minimum`を選ぶと、そのモデルが対応する最低レベルを使用します。旧Thinking
 on/off設定は使用しません。
@@ -52,3 +52,17 @@ tokenは自動更新されます。ブラウザからのredirectを受けるた�
 # 関連機能
 
 [AI Chat](/features/ai-chat.md)、[Discord bot](/features/discord-bot.md)（同じprovider設定を共有）、[MCP](/features/mcp-apps.md)（同様のPKCE/loopback方式のOAuth）。
+
+# モデルの検証とproviderの選択
+
+OpenRouterとOpenCode GoはAPI providerの選択欄にプリセットがあります。
+API keyと接続先を設定して **Verify & fetch models** を押し、取得した一覧から
+利用するモデルを選択します。OpenAIの一覧では音声・画像・embeddingなどの専用モデルと
+廃止済みモデルを除きます。OpenRouter／OpenCode Goは公開カタログの取得に加えて
+キーの認証も確認します。接続先やキーを変更した場合は再検証が必要です。
+Local LLMでは手動でのモデルID指定も利用できます。
+
+Chatのモデル欄には設定画面で選択中のprovider profileのモデルだけが表示されます。
+別providerへの切り替えは設定画面で行います。WorkflowやDashboardでは検証済みの
+別profileも明示的に選べます。チェックを外したモデルは自動で再有効化しません。
+既存のAPI profileも、この更新後は一度検証してください。

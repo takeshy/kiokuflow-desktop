@@ -1,5 +1,6 @@
 import { workflowHTTPRequest } from "../lib/wailsBackend";
 import type { ModelProviderProfile } from "./settings";
+import { compatibleProvider, isOpenAIChatModel } from "./providerPresets";
 
 function modelURL(profile: ModelProviderProfile): string {
   const base = profile.endpoint.replace(/\/+$/, "")
@@ -8,7 +9,7 @@ function modelURL(profile: ModelProviderProfile): string {
   if (profile.provider === "gemini") {
     return `${base}/models`;
   }
-  if (profile.local) return `${base}/models`;
+  if (profile.local || compatibleProvider(profile)) return `${base}/models`;
   return base.endsWith("/v1") ? `${base}/models` : `${base}/v1/models`;
 }
 
@@ -55,6 +56,10 @@ export async function fetchProviderModels(
   profile: ModelProviderProfile,
 ): Promise<string[]> {
   const headers: Record<string, string> = {};
+  const preset = compatibleProvider(profile);
+  if (!profile.local && !profile.apiKey.trim()) throw new Error("Enter an API key before verifying models.");
+  if (preset === "openrouter") headers["X-Title"] = "kiokuflow-desktop";
+  if (preset === "opencodego") headers["User-Agent"] = "kiokuflow-desktop/1.0";
   if (profile.apiKey) {
     if (profile.provider === "gemini") {
       headers["x-goog-api-key"] = profile.apiKey;
@@ -129,14 +134,35 @@ export async function fetchProviderModels(
     );
   }
   const payload = JSON.parse(response.body) as {
-    data?: Array<{ id?: string }>;
-    models?: Array<{ name?: string }>;
+    data?: Array<{ id?: string; shutdown_date?: string; architecture?: { output_modalities?: string[] } }>;
+    models?: Array<{ name?: string; supportedGenerationMethods?: string[] }>;
   };
+  if (preset) {
+    // Public catalogues do not prove that the supplied key is valid.
+    const base = profile.endpoint.replace(/\/+$/, "");
+    const first = payload.data?.find(item => typeof item.id === "string");
+    if (!first) throw new Error("The provider returned no chat models.");
+    const verification = await workflowHTTPRequest({
+      url: `${base}${preset === "openrouter" ? "/key" : "/chat/completions"}`,
+      method: preset === "openrouter" ? "GET" : "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      ...(preset === "opencodego" ? { body: JSON.stringify({ model: first.id, messages: [] }) } : {}),
+    });
+    if (!(verification.status >= 200 && verification.status < 300) &&
+      !(preset === "opencodego" && [400, 422].includes(verification.status))) {
+      throw new Error(`Provider key verification failed (HTTP ${verification.status}).`);
+    }
+  }
+  const officialOpenAI = profile.provider === "openai" && !profile.openAICompatible && !profile.local;
   const models = profile.provider === "gemini"
-    ? (payload.models ?? []).map((item) =>
+    ? (payload.models ?? []).filter(item => !item.supportedGenerationMethods || item.supportedGenerationMethods.includes("generateContent")).map((item) =>
       item.name?.replace(/^models\//, "") || ""
     )
-    : (payload.data ?? []).map((item) => item.id || "");
+    : (payload.data ?? []).filter(item =>
+      typeof item.id === "string" &&
+      (!officialOpenAI || (isOpenAIChatModel(item.id) && !(item.shutdown_date && Date.parse(item.shutdown_date) <= Date.now()))) &&
+      (!preset || !item.architecture?.output_modalities || item.architecture.output_modalities.includes("text"))
+    ).map((item) => item.id || "");
   return [...new Set(models.filter(Boolean))].sort((a, b) =>
     a.localeCompare(b)
   );

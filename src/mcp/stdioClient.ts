@@ -20,7 +20,7 @@ export class McpStdioClient {
     try {
       let initialized = false, lastError: unknown;
       for (const protocolVersion of ["2025-03-26", "2024-11-05"]) {
-        try { await mcpStdioRequest(this.sessionID, "initialize", { protocolVersion, capabilities: MCP_APPS_CLIENT_CAPABILITIES, clientInfo: { name: "gemihub-desktop", version: "0.1.0" } }); initialized = true; break; }
+        try { await mcpStdioRequest(this.sessionID, "initialize", { protocolVersion, capabilities: MCP_APPS_CLIENT_CAPABILITIES, clientInfo: { name: "kiokuflow-desktop", version: "0.1.0" } }); initialized = true; break; }
         catch (error) {
           lastError = error;
           // Retry negotiation only for an explicit protocol error, never a failed process.

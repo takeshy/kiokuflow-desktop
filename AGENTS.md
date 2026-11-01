@@ -11,5 +11,5 @@ wails3 task windows:build ARCH=arm64
 ```
 
 Do not invoke Windows PowerShell for the executable build. The output is written
-to `bin/gemihub-desktop.exe`. The Store-ready MSIX is built on a Windows host or
+to `bin/kiokuflow-desktop.exe`. The Store-ready MSIX is built on a Windows host or
 CI with `wails3 task windows:msix ARCH=arm64`.

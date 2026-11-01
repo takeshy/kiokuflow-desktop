@@ -102,6 +102,8 @@ export function RAGSearchPanel({
     ? settings.ragSettings[selectedName]
     : undefined;
   const [query, setQuery] = useState("");
+  const [jevFilter, setJevFilter] = useState(selectedSetting?.jevRagFilterEnabled ?? true);
+  const [untilMatch, setUntilMatch] = useState(selectedSetting?.searchUntilMatch ?? false);
   const [topK, setTopK] = useState(selectedSetting?.topK ?? 5);
   const [threshold, setThreshold] = useState(
     selectedSetting?.scoreThreshold ?? 0.3,
@@ -157,6 +159,8 @@ export function RAGSearchPanel({
   useEffect(() => {
     if (!selectedSetting) return;
     setTopK(selectedSetting.topK);
+    setJevFilter(selectedSetting.jevRagFilterEnabled);
+    setUntilMatch(selectedSetting.searchUntilMatch ?? false);
     setThreshold(selectedSetting.scoreThreshold);
     setExtensions(selectedSetting.searchFileExtensions.join(", "));
     setTargetDraft(selectedSetting.targetFolders.join("\n"));
@@ -209,7 +213,8 @@ export function RAGSearchPanel({
     setCopied(false);
     try {
       const result = await searchRAG(selectedName, query.trim(), {
-        ...resolveRAGSetting(settings, selectedSetting),
+        ...resolveRAGSetting(settings, { ...selectedSetting, jevRagFilterEnabled: jevFilter }),
+        searchUntilMatch: untilMatch,
         topK,
         scoreThreshold: threshold,
         searchFileExtensions: extensions.split(",").map((item) =>
@@ -662,15 +667,17 @@ export function RAGSearchPanel({
           </div>
         )}
         <div className="rag-search-parameters">
+          <label><input type="checkbox" checked={jevFilter} disabled={!settings.jevRagFilterEnabled} onChange={event => setJevFilter(event.target.checked)} />Jev relevance filtering</label>
+          <label><input type="checkbox" checked={untilMatch} disabled={!jevFilter || !settings.jevRagFilterEnabled} onChange={event => setUntilMatch(event.target.checked)} />Search until a match</label>
           <label>
             Top K<input
               type="number"
               min="1"
-              max="999"
+              max="20"
               value={topK}
               onChange={(event) =>
                 setTopK(
-                  Math.max(1, Math.min(999, Number(event.target.value) || 1)),
+                  Math.max(1, Math.min(20, Math.trunc(Number(event.target.value)) || 1)),
                 )}
             />
           </label>
@@ -857,6 +864,7 @@ export function RAGSearchPanel({
                   <span className="rag-search-score">
                     {result.score.toFixed(3)}
                   </span>
+                  {result.jevUnchecked && <small>Jev: unchecked media</small>}
                 </label>
                 <button
                   type="button"

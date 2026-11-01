@@ -8,13 +8,13 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..")).Path
 $config = Get-Content (Join-Path $root "wails.json") -Raw | ConvertFrom-Json
 $version = "$($config.info.version).0"
 $msixArch = if ($Arch -eq "amd64") { "x64" } else { "arm64" }
-$stage = Join-Path ([System.IO.Path]::GetTempPath()) ("gemihub-desktop-msix-" + [guid]::NewGuid())
+$stage = Join-Path ([System.IO.Path]::GetTempPath()) ("kiokuflow-desktop-msix-" + [guid]::NewGuid())
 $assets = Join-Path $stage "Assets"
-$output = Join-Path $root "bin\gemihub-desktop-windows-$Arch.msix"
+$output = Join-Path $root "bin\kiokuflow-desktop-windows-$Arch.msix"
 
 New-Item -ItemType Directory -Force $assets | Out-Null
 try {
-    Copy-Item (Join-Path $root "bin\gemihub-desktop.exe") (Join-Path $stage "gemihub-desktop.exe")
+    Copy-Item (Join-Path $root "bin\kiokuflow-desktop.exe") (Join-Path $stage "kiokuflow-desktop.exe")
     Copy-Item (Join-Path $PSScriptRoot "Assets\*") $assets
 
     $manifest = Get-Content (Join-Path $PSScriptRoot "AppxManifest.xml") -Raw

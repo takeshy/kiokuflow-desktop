@@ -24,6 +24,25 @@ func (function chatRoundTripFunc) RoundTrip(request *http.Request) (*http.Respon
 	return function(request)
 }
 
+func TestOpenCodeGoSessionHeaders(t *testing.T) {
+	endpoint := "https://opencode.ai/zen/go/v1/chat/completions"
+	first := compatibleChatHeaders(endpoint, "workspace-one", "chat-one")
+	if first["User-Agent"] != "kiokuflow-desktop/1.0" || first["x-opencode-session"] == "" {
+		t.Fatalf("missing provider headers: %v", first)
+	}
+	if first["x-opencode-session"] != compatibleChatHeaders(endpoint, "workspace-one", "chat-one")["x-opencode-session"] {
+		t.Fatal("session changed within a conversation")
+	}
+	for _, other := range [][2]string{{"workspace-two", "chat-one"}, {"workspace-one", "chat-two"}} {
+		if first["x-opencode-session"] == compatibleChatHeaders(endpoint, other[0], other[1])["x-opencode-session"] {
+			t.Fatal("conversations or workspaces shared an upstream session")
+		}
+	}
+	if got := compatibleChatHeaders("https://other.example/v1/chat/completions", "workspace", "chat"); got != nil {
+		t.Fatalf("provider-specific headers leaked to a custom endpoint: %v", got)
+	}
+}
+
 func TestFileToolDefinitionsForMode(t *testing.T) {
 	if got := len(fileToolDefinitionsForMode("all")); got != 7 {
 		t.Fatalf("all mode returned %d tools, want 7", got)

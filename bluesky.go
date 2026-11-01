@@ -17,7 +17,7 @@ import (
 
 	"github.com/bluesky-social/indigo/atproto/auth/oauth"
 	"github.com/bluesky-social/indigo/atproto/syntax"
-	"github.com/takeshy/gemihub-desktop/internal/bluesky"
+	"github.com/takeshy/kiokuflow-desktop/internal/bluesky"
 )
 
 var blueskyMu sync.Mutex
@@ -185,7 +185,7 @@ func (a *App) ConnectBluesky(handle string) (BlueskyStatus, error) {
 	}
 	defer listener.Close()
 	config := oauth.NewLocalhostConfig("http://"+listener.Addr().String()+"/callback", blueskyScopes)
-	config.UserAgent = "GemiHub-Desktop"
+	config.UserAgent = "kiokuflow-desktop"
 	// Use a fresh store until the callback succeeds so a cancelled reconnect
 	// cannot overwrite the previous account's configuration or credentials.
 	pendingPath := fmt.Sprintf("%s.pending-%d", s.path, attempt)
@@ -216,7 +216,7 @@ func (a *App) ConnectBluesky(handle string) (BlueskyStatus, error) {
 		default:
 		}
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		fmt.Fprint(w, "Return to GemiHub Desktop to finish connecting Bluesky.")
+		fmt.Fprint(w, "Return to kiokuflow-desktop to finish connecting Bluesky.")
 	})}
 	go func() { _ = server.Serve(listener) }()
 	defer server.Close()

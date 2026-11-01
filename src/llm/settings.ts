@@ -5,6 +5,7 @@ import {
   normalizeKakerattaSettings,
 } from "../lib/kakerattaSettings";
 import { validSpeechShortcut } from "./speechShortcut";
+import { hydrateSettingsCredentials, protectSettingsCredentials, unlockSettingsCredentials } from "../lib/settingsCredentials";
 
 export type ChatProvider = "openai" | "gemini" | "vertex" | "anthropic" | "cli";
 export type LocalLLMFramework =
@@ -97,6 +98,7 @@ export interface ModelProviderProfile extends APIProviderProfile {
   provider: Exclude<ChatProvider, "cli" | "vertex">;
   enabledModels: string[];
   availableModels: string[];
+  modelsVerified?: boolean;
   enabled: boolean;
   local: boolean;
   openAICompatible: boolean;
@@ -298,6 +300,7 @@ export function selectSpeechEndpoint(
 }
 
 export interface ChatSettings {
+  encryptedCredentials?: Record<string, string>;
   speech: SpeechSettings;
   provider: ChatProvider;
   endpoint: string;
@@ -412,9 +415,9 @@ export const chatModelChoices: Record<Exclude<ChatProvider, "cli">, string[]> =
   {
     openai: [
       "gpt-6-astra",
-      "gpt-5.6-sol",
-      "gpt-5.6-terra",
-      "gpt-5.6-luna",
+      "gpt-6.1-sol",
+      "gpt-6.1-terra",
+      "gpt-6-luna",
       "gpt-5.5",
       "gpt-5.5-pro",
       "gpt-5.4",
@@ -533,15 +536,17 @@ export const defaultRAGSetting: RAGSetting = {
   vertexLocation: "us",
   vertexOAuthClientId: "",
   vertexOAuthClientSecret: "",
-  jevRagFilterEnabled: false,
+  jevRagFilterEnabled: true,
   jevApiKey: "",
   jevUseOpenRouter: false,
+  searchUntilMatch: false,
 };
 
 export function getOpenRouterAPIKey(settings: ChatSettings): string {
   const isOpenRouter = (endpoint: string) => {
     try {
-      return new URL(endpoint).hostname.toLowerCase() === "openrouter.ai";
+      const url = new URL(endpoint);
+      return url.origin === "https://openrouter.ai" && !url.username && !url.password && !url.search && !url.hash;
     } catch {
       return false;
     }
@@ -551,6 +556,7 @@ export function getOpenRouterAPIKey(settings: ChatSettings): string {
     candidate.apiKey.trim()
   );
   if (profile) return profile.apiKey.trim();
+  if (settings.modelProfiles.some(candidate => isOpenRouter(candidate.endpoint))) return "";
   if (isOpenRouter(settings.endpoint)) return settings.apiKey.trim();
   const legacy = settings.providerProfiles.openai;
   return legacy && isOpenRouter(legacy.endpoint) ? legacy.apiKey.trim() : "";
@@ -654,10 +660,7 @@ export function syncActiveModelProfile(settings: ChatSettings): ChatSettings {
           username: settings.localUsername,
           password: settings.localPassword,
           streamIdleTimeoutSeconds: settings.streamIdleTimeoutSeconds,
-          enabledModels: model && !profile.enabledModels.includes(model)
-            ? [...profile.enabledModels, model]
-            : profile.enabledModels,
-          model,
+          model: profile.enabledModels.includes(model) ? model : profile.enabledModels[0] || "",
         }
         : profile
     ),
@@ -685,7 +688,8 @@ export function selectModelProfile(
     localUsername: profile.username,
     localPassword: profile.password,
     streamIdleTimeoutSeconds: profile.streamIdleTimeoutSeconds || 120,
-    model: model || profile.model || profile.enabledModels[0] || "",
+    model: model && profile.enabledModels.includes(model) ? model
+      : profile.enabledModels.includes(profile.model) ? profile.model : profile.enabledModels[0] || "",
     vertexProjectId: "",
     vertexLocation: "global",
     vertexOAuthClientId: "",
@@ -701,13 +705,34 @@ export function updateModelProfile(
   const synced = syncActiveModelProfile(settings);
   const current = synced.modelProfiles.find((profile) => profile.id === id);
   if (!current) return synced;
+  const connectionChanged = (["provider", "endpoint", "apiKey", "localFramework", "username", "password", "local", "openAICompatible"] as const)
+    .some(key => changes[key] !== undefined && changes[key] !== current[key]);
+  const destinationChanged = (["provider", "endpoint", "localFramework", "local", "openAICompatible"] as const)
+    .some(key => changes[key] !== undefined && changes[key] !== current[key]);
   const updated = { ...current, ...changes };
+  if (destinationChanged) {
+    updated.apiKey = changes.apiKey ?? "";
+    updated.password = changes.password ?? "";
+  }
+  if (connectionChanged) {
+    updated.modelsVerified = false;
+    updated.availableModels = [];
+    updated.enabledModels = [];
+  }
+  updated.model = updated.enabledModels.includes(updated.model) ? updated.model : updated.enabledModels[0] || "";
   const next = {
     ...synced,
+    encryptedCredentials: { ...synced.encryptedCredentials },
     modelProfiles: synced.modelProfiles.map((profile) =>
       profile.id === id ? updated : profile
     ),
   };
+  for (const [field, activeField] of [["apiKey", "apiKey"], ["password", "localPassword"]] as const) {
+    if (destinationChanged || changes[field] === "") {
+      next.encryptedCredentials[JSON.stringify(["modelProfiles", id, field])] = "";
+      if (next.selectedModelProfileId === id) next.encryptedCredentials[JSON.stringify([activeField])] = "";
+    }
+  }
   if (next.selectedModelProfileId !== id) return next;
   return {
     ...next,
@@ -717,7 +742,7 @@ export function updateModelProfile(
     localFramework: updated.localFramework,
     localUsername: updated.username,
     localPassword: updated.password,
-    model: changes.model ?? updated.model ?? updated.enabledModels[0] ?? "",
+    model: updated.model,
   };
 }
 
@@ -746,6 +771,7 @@ export function newModelProfile(
     model: "",
     enabledModels: [],
     availableModels: [],
+    modelsVerified: false,
     enabled: true,
     local,
     openAICompatible: local || openAICompatible,
@@ -815,10 +841,10 @@ export function resolveRAGSetting(
   rag: RAGSetting,
 ): RAGSetting {
   const openRouterKey = getOpenRouterAPIKey(settings);
-  const useOpenRouter = settings.jevUseOpenRouter && !!openRouterKey;
+  const useOpenRouter = settings.jevUseOpenRouter;
   const withJev = (resolved: RAGSetting): RAGSetting => ({
     ...resolved,
-    jevRagFilterEnabled: settings.jevRagFilterEnabled,
+    jevRagFilterEnabled: settings.jevRagFilterEnabled && resolved.jevRagFilterEnabled,
     jevApiKey: useOpenRouter ? openRouterKey : settings.jevApiKey,
     jevUseOpenRouter: useOpenRouter,
   });
@@ -826,7 +852,14 @@ export function resolveRAGSetting(
     return withJev(rag);
   }
   const provider = rag.embeddingProvider;
-  const resolved = switchChatProvider(settings, provider);
+  let resolved = switchChatProvider(settings, provider);
+  if (provider !== "vertex") {
+    const profiles = settings.modelProfiles.filter(profile => profile.provider === provider);
+    const profile = [...profiles].sort((a, b) => Number(b.id === settings.selectedModelProfileId) - Number(a.id === settings.selectedModelProfileId))
+      .find(profile => profile.enabled && !profile.local && !profile.openAICompatible && profile.apiKey.trim());
+    if (profile) resolved = { ...resolved, endpoint: profile.endpoint, apiKey: profile.apiKey };
+    else if (profiles.length) resolved = { ...resolved, endpoint: providerDefaults(provider).endpoint, apiKey: "" };
+  }
   return withJev({
     ...rag,
     embeddingBaseUrl: provider === "openai" ? resolved.endpoint : "",
@@ -869,10 +902,10 @@ export function configuredChatProviders(
   const apiProviders = (["openai", "gemini", "vertex", "anthropic"] as const)
     .filter((provider) => {
       const profile = profiles[provider];
-      return !!profile && profileConfigured(provider, profile);
+      return !settings.modelProfiles.some(item => item.provider === provider) && !!profile && profileConfigured(provider, profile);
     });
   const profileProviders = settings.modelProfiles.filter((profile) =>
-    profile.enabled && profile.enabledModels.length > 0
+    profile.enabled && enabledProfileModels(profile).length > 0
   ).map((profile) => profile.provider);
   const combined = [
     ...new Set([...apiProviders, ...profileProviders]),
@@ -886,7 +919,7 @@ export function loadChatSettings(
   try {
     const legacy = storage.getItem("llm-hub:chat-settings");
     const stored = storage.getItem(CHAT_SETTINGS_KEY) ?? legacy ?? "{}";
-    const parsed = JSON.parse(stored) as Partial<ChatSettings>;
+    const parsed = hydrateSettingsCredentials(JSON.parse(stored) as Record<string, unknown>) as Partial<ChatSettings>;
     const provider = parsed.provider ?? defaultChatSettings.provider;
     const legacyProfiles =
       parsed.modelProfiles && Array.isArray(parsed.modelProfiles)
@@ -900,7 +933,8 @@ export function loadChatSettings(
         return {
           ...newModelProfile(item.provider, item.local, compatible),
           ...item,
-          model: migrateOldDefaultModel(item.provider, item.model),
+          model: item.model ? migrateOldDefaultModel(item.provider, item.model) : "",
+          modelsVerified: item.modelsVerified === true,
           // Deduped because two retired ids can migrate onto the same model.
           enabledModels: [
             ...new Set(
@@ -1075,6 +1109,8 @@ export function loadChatSettings(
               ...value,
               embeddingProvider: inferredProvider,
               embeddingSource,
+              jevRagFilterEnabled: value.searchUntilMatch === undefined ? true : value.jevRagFilterEnabled ?? true,
+              searchUntilMatch: value.searchUntilMatch ?? false,
             }];
           }),
         )
@@ -1093,16 +1129,30 @@ function providerEndpointHost(endpoint: string): string {
   }
 }
 
-export function saveChatSettings(settings: ChatSettings): void {
+let settingsSaveQueue: Promise<void> = Promise.resolve();
+
+export function saveChatSettings(settings: ChatSettings): Promise<void> {
   settings = syncActiveModelProfile(settings);
   const providerProfiles = { ...settings.providerProfiles };
   if (settings.provider !== "cli") {
     providerProfiles[settings.provider] = profileFromSettings(settings);
   }
-  localStorage.setItem(
-    CHAT_SETTINGS_KEY,
-    JSON.stringify({ ...settings, providerProfiles }),
-  );
+  const snapshot = JSON.parse(JSON.stringify({ ...settings, providerProfiles })) as Record<string, unknown>;
+  const save = settingsSaveQueue.then(async () => {
+    const previous = JSON.parse(localStorage.getItem(CHAT_SETTINGS_KEY) || "{}") as Record<string, unknown>;
+    const protectedSettings = await protectSettingsCredentials(snapshot, previous);
+    localStorage.setItem(CHAT_SETTINGS_KEY, JSON.stringify(protectedSettings));
+    // Remove the old plaintext migration source after a successful save.
+    localStorage.removeItem?.("llm-hub:chat-settings");
+  });
+  settingsSaveQueue = save.catch(() => {});
+  return save;
+}
+
+export async function unlockChatSettings(): Promise<ChatSettings> {
+  await settingsSaveQueue;
+  await unlockSettingsCredentials(JSON.parse(localStorage.getItem(CHAT_SETTINGS_KEY) || "{}") as Record<string, unknown>);
+  return loadChatSettings();
 }
 
 export const cliNames: Record<CLIType, string> = {
@@ -1125,7 +1175,7 @@ export function configuredModelOptions(
   const synced = syncActiveModelProfile(settings);
   const profiles = synced.modelProfiles.flatMap((profile) =>
     profile.enabled
-      ? profile.enabledModels.filter(Boolean).map((model) => ({
+      ? enabledProfileModels(profile).map((model) => ({
         key: `profile:${profile.id}:${model}`,
         label: `${profile.name} — ${model}`,
         profileId: profile.id,
@@ -1150,6 +1200,28 @@ export function configuredModelOptions(
     cliType,
   }));
   return [...profiles, ...vertex, ...cli];
+}
+
+export function enabledProfileModels(profile: ModelProviderProfile): string[] {
+  if (!profile.local && profile.modelsVerified !== true) return [];
+  return [...new Set(profile.enabledModels)].filter(model => model && (profile.local || profile.availableModels.includes(model)));
+}
+
+export function activeChatModelOptions(settings: ChatSettings): ConfiguredModelOption[] {
+  return configuredModelOptions(settings).filter(option =>
+    option.profileId ? option.profileId === settings.selectedModelProfileId && option.provider === settings.provider
+      : option.provider === settings.provider
+  );
+}
+
+export function assertChatModelEnabled(settings: ChatSettings): void {
+  const profile = currentModelProfile(settings);
+  if (profile && settings.provider === profile.provider && !profile.local && !settings.apiKey.trim()) {
+    throw new Error("Unlock the saved API key in Settings > Encryption or enter a key in AI features.");
+  }
+  if (!activeChatModelOptions(settings).some(option => option.key === selectedModelOptionKey(settings))) {
+    throw new Error("Verify the provider and enable a model in Settings > AI features before sending.");
+  }
 }
 
 export function selectedModelOptionKey(settings: ChatSettings): string {
@@ -1190,10 +1262,9 @@ export function settingsForModel(
   settings: ChatSettings,
   model: string,
 ): ChatSettings {
-  const profile = settings.modelProfiles.find((item) =>
-    item.enabled && item.enabledModels.includes(model)
-  );
-  return profile
-    ? selectModelProfile(settings, profile.id, model)
-    : { ...settings, model };
+  if (settings.provider === "cli") return settings;
+  const options = configuredModelOptions(settings).filter(option => option.provider === settings.provider && option.model === model);
+  const option = options.find(option => option.profileId === settings.selectedModelProfileId) ?? options[0];
+  if (!option) throw new Error("Select a verified, enabled model for this provider.");
+  return selectConfiguredModel(settings, option.key);
 }

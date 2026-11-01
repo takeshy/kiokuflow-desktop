@@ -122,6 +122,8 @@ import {
   type CodexReasoningEffort,
   configuredChatProviders,
   configuredModelOptions,
+  activeChatModelOptions,
+  assertChatModelEnabled,
   type FileToolMode,
   type GeminiReasoningEffort,
   type OpenAIReasoningEffort,
@@ -926,7 +928,7 @@ export function ChatPanel({
     setActiveOkfBundleIds((ids) =>
       ids.includes(builtin.id) ? ids : [...ids, builtin.id]
     );
-    setInput("How do I use GemiHub Desktop?");
+    setInput("How do I use kiokuflow-desktop?");
     queueMicrotask(() => composerRef.current?.focus());
   }, [setActiveOkfBundleIds]);
   const refreshOkfBundles = useCallback(async () => {
@@ -1691,6 +1693,10 @@ export function ChatPanel({
         ]),
       ]);
     }
+    try { assertChatModelEnabled(settings); } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+      return;
+    }
     const fileAtSend = attachedActiveFile(activeFile?.path, attachedFiles);
     let promptText = invokedSkill
       ? skillInvocation?.[2]?.trim() ||
@@ -2040,6 +2046,7 @@ export function ChatPanel({
           : `- ${server.name}: no explicit Google Cloud project ID is configured.`;
       }).join("\n");
       const chatRequest = {
+        conversationId: sessionIDAtSend,
         provider: settings.provider,
         endpoint: settings.endpoint,
         apiKey: settings.apiKey,
@@ -2423,14 +2430,14 @@ export function ChatPanel({
               <article>
                 <div>
                   <BookOpen size={16} />
-                  <strong>GemiHub Desktop Help</strong>
+                  <strong>kiokuflow-desktop Help</strong>
                 </div>
                 <p>
                   Use the built-in help knowledge to ask about features,
                   settings, and everyday operations.
                 </p>
                 <button type="button" onClick={askDesktopHelp}>
-                  <BookOpen size={13} />Ask GemiHub Desktop Help
+                  <BookOpen size={13} />Ask kiokuflow-desktop Help
                 </button>
               </article>
               <article>
@@ -3390,7 +3397,7 @@ export function ChatPanel({
         <div className="chat-model-selector">
           <select
             value={selectedModelOptionKey(settings)}
-            disabled={loading || configuredModelOptions(settings).length === 0}
+            disabled={loading || activeChatModelOptions(settings).length === 0}
             onChange={(event) => {
               setToolMenuOpen(false);
               onSettingsChange(
@@ -3400,11 +3407,11 @@ export function ChatPanel({
             title="Model"
           >
             <option value="" disabled>
-              {configuredModelOptions(settings).length
+              {activeChatModelOptions(settings).length
                 ? "Select model"
                 : "No configured model"}
             </option>
-            {configuredModelOptions(settings).map((option) => (
+            {activeChatModelOptions(settings).map((option) => (
               <option key={option.key} value={option.key}>
                 {option.label}
               </option>

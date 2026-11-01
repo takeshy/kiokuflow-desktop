@@ -28,7 +28,7 @@ export function McpAppRenderer({ info }: { info: McpAppInfo }) {
       const respond = (payload: Record<string, unknown>) => iframeRef.current?.contentWindow?.postMessage({ jsonrpc: "2.0", id: message.id, ...payload }, "*");
       if (message.method === "ui/initialize") {
         if (message.id === undefined) return;
-        respond({ result: { protocolVersion: "2026-01-26", hostInfo: { name: "gemihub-desktop", version: "1.2.2" }, hostCapabilities: { serverTools: {} }, hostContext: { theme: document.documentElement.dataset.theme === "dark" ? "dark" : "light", platform: "desktop", displayMode: "inline" } } });
+        respond({ result: { protocolVersion: "2026-01-26", hostInfo: { name: "kiokuflow-desktop", version: "1.2.2" }, hostCapabilities: { serverTools: {} }, hostContext: { theme: document.documentElement.dataset.theme === "dark" ? "dark" : "light", platform: "desktop", displayMode: "inline" } } });
       } else if (message.method === "ui/notifications/initialized") {
         iframeRef.current?.contentWindow?.postMessage({ jsonrpc: "2.0", method: "ui/notifications/tool-result", params: { content: info.toolResult.content || [], isError: Boolean(info.toolResult.isError), structuredContent: info.toolResult.structuredContent } }, "*");
       } else if (message.method === "tools/call") {

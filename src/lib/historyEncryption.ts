@@ -19,6 +19,9 @@ function profile(): Profile | null {
   try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "null") as Profile | null; } catch { return null; }
 }
 
+/** API credentials share the history key pair and its single password. */
+export function historyEncryptionProfile(): Profile | null { return profile(); }
+
 export function historyEncryptionPreferences(): HistoryEncryptionPreferences {
   try {
     const value = JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") as Partial<HistoryEncryptionPreferences>;

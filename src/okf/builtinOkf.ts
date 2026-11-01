@@ -1,7 +1,7 @@
 import { gunzipSync, strFromU8 } from "fflate";
 
 export const BUILTIN_OKF_BUNDLE_ID = "__builtin__/gemihub-desktop-help";
-export const BUILTIN_OKF_BUNDLE_NAME = "GemiHub Desktop Help";
+export const BUILTIN_OKF_BUNDLE_NAME = "kiokuflow-desktop Help";
 
 export interface BuiltinOkfDocument {
   path: string;

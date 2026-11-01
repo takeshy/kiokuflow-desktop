@@ -11,7 +11,7 @@
     Version="@VERSION@"
     ProcessorArchitecture="@ARCH@" />
   <Properties>
-    <DisplayName>gemihub-desktop</DisplayName>
+    <DisplayName>kiokuflow-desktop</DisplayName>
     <PublisherDisplayName>takeshy</PublisherDisplayName>
     <Description>Local-first AI workspace</Description>
     <Logo>Assets\StoreLogo.png</Logo>
@@ -24,9 +24,9 @@
     <Resource Language="en-us" />
   </Resources>
   <Applications>
-    <Application Id="App" Executable="gemihub-desktop.exe" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="App" Executable="kiokuflow-desktop.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="gemihub-desktop"
+        DisplayName="kiokuflow-desktop"
         Description="Local-first AI workspace"
         BackgroundColor="transparent"
         Square44x44Logo="Assets\Square44x44Logo.png"
@@ -36,7 +36,7 @@
       <Extensions>
         <uap:Extension Category="windows.fileTypeAssociation">
           <uap:FileTypeAssociation Name="gemihub.documents">
-            <uap:DisplayName>GemiHub documents</uap:DisplayName>
+            <uap:DisplayName>kiokuflow-desktop documents</uap:DisplayName>
             <uap:SupportedFileTypes>
               <uap:FileType>.md</uap:FileType>
               <uap:FileType>.txt</uap:FileType>
@@ -51,7 +51,7 @@
             </uap:SupportedFileTypes>
           </uap:FileTypeAssociation>
         </uap:Extension>
-        <desktop:Extension Category="windows.fullTrustProcess" Executable="gemihub-desktop.exe" />
+        <desktop:Extension Category="windows.fullTrustProcess" Executable="kiokuflow-desktop.exe" />
       </Extensions>
     </Application>
   </Applications>

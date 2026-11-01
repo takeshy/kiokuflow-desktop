@@ -8,20 +8,20 @@ fi
 arch=${1:-arm64}
 case "$arch" in arm64|amd64) ;; *) echo 'Unsupported architecture.' >&2; exit 1 ;; esac
 version=$(plutil -extract info.version raw -o - wails.json)
-work_dir=$(mktemp -d "${TMPDIR:-/tmp}/gemihub-package.XXXXXX")
+work_dir=$(mktemp -d "${TMPDIR:-/tmp}/kiokuflow-package.XXXXXX")
 trap 'rm -rf "$work_dir"' EXIT HUP INT TERM
-app="$work_dir/GemiHub Desktop.app"
+app="$work_dir/kiokuflow-desktop.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-install -m 755 bin/gemihub-desktop "$app/Contents/MacOS/gemihub-desktop"
+install -m 755 bin/kiokuflow-desktop "$app/Contents/MacOS/kiokuflow-desktop"
 cp THIRD_PARTY_NOTICES.md "$app/Contents/Resources/"
 cat > "$app/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-<key>CFBundleName</key><string>GemiHub Desktop</string>
-<key>CFBundleDisplayName</key><string>GemiHub Desktop</string>
+<key>CFBundleName</key><string>kiokuflow-desktop</string>
+<key>CFBundleDisplayName</key><string>kiokuflow-desktop</string>
 <key>CFBundleIdentifier</key><string>takeshy.gemihub-desktop</string>
-<key>CFBundleExecutable</key><string>gemihub-desktop</string>
+<key>CFBundleExecutable</key><string>kiokuflow-desktop</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>$version</string>
 <key>CFBundleVersion</key><string>$version</string>
@@ -41,4 +41,4 @@ done
 iconutil -c icns "$iconset" -o "$app/Contents/Resources/appicon.icns"
 codesign --force --sign - "$app"
 codesign --verify --deep --strict "$app"
-ditto -c -k --sequesterRsrc --keepParent "$app" "bin/gemihub-desktop-darwin-$arch.app.zip"
+ditto -c -k --sequesterRsrc --keepParent "$app" "bin/kiokuflow-desktop-darwin-$arch.app.zip"

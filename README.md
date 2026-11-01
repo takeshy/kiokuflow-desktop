@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="build/appicon.png" alt="GemiHub Desktop icon" width="128">
+  <img src="build/appicon.png" alt="kiokuflow-desktop icon" width="128">
 </p>
 
-# GemiHub Desktop
+# kiokuflow-desktop
 
 Chat supports one-click normal/wide sidebar layouts, compact manual Markdown exports, and automatic history retention. Manual notes use `YYYYMMDD-HHmmss_Chat title.md`; the default history limit is 100 and `0` is unlimited.
 
@@ -14,7 +14,7 @@ Chat supports one-click normal/wide sidebar layouts, compact manual Markdown exp
 [日本語 README](README_ja.md)
 
 [Get it from the Microsoft Store](https://apps.microsoft.com/detail/9PH8RH26NTD5) ·
-[Privacy Policy](https://takeshy.github.io/gemihub-desktop/privacy.html)
+[Privacy Policy](https://takeshy.github.io/kiokuflow-desktop/privacy.html)
 
 ![GemiHub workspace comparing a PDF with an HTML research note](docs/images/col.png)
 
@@ -32,7 +32,7 @@ current Workspace carry the context; the user supplies the intent.
 
 ## Why this app exists
 
-GemiHub Desktop brings together three ideas developed in earlier projects:
+kiokuflow-desktop brings together three ideas developed in earlier projects:
 
 - the fast document viewing, editing, and source-linked memo experience of
   **[mdwys](https://github.com/takeshy/mdwys)**;
@@ -91,7 +91,7 @@ Agent Skills, OKF bundles, and Plugins.
 
 ## A workspace that grows with plugins
 
-GemiHub Desktop is not limited to built-in document and AI tools. Install
+kiokuflow-desktop is not limited to built-in document and AI tools. Install
 plugins from **Settings → Plugins** to add complete, task-focused applications
 to the same local Workspace:
 
@@ -200,7 +200,7 @@ file, and restore an earlier state when needed.
 
 ## Architecture
 
-GemiHub Desktop is built with Go, Wails, Node.js, Vite, React, Wysimark-lite, and
+kiokuflow-desktop is built with Go, Wails, Node.js, Vite, React, Wysimark-lite, and
 pdf.js.
 
 The desktop shell provides local filesystem access within a user-selected
@@ -215,7 +215,20 @@ extensible intelligence layer.
 - Encrypted files: self-contained `.encrypted` files that retain the original
   format
 
+API providers include OpenRouter and OpenCode Go presets. Use **Verify & fetch
+models** in AI settings, then select enabled models. Chat shows models from the
+active provider profile. Existing API profiles need to be verified once after updating.
+
+Local RAG stays on disk and supports optional per-index Jev relevance filtering
+and search until a match (up to 1,000 candidates). Direct Jev requests use the
+[official TypeSafe API](https://docs.typesafe.ai/api/system-one); create keys in the
+[official console](https://console.typesafe.ai/), or explicitly use OpenRouter.
+
 ### Safety model
+
+Set up the common password under **Settings > Encryption** to encrypt saved API
+keys with the same public key used for history; unlock them together after
+restarting. Existing settings remain unencrypted until this is set up.
 
 - Workspace APIs and AI file tools are limited to the selected Workspace
   directory. Files opened from elsewhere are limited to their explicitly opened
@@ -240,14 +253,14 @@ are not required at runtime.
 
 Available release artifacts:
 
-- `gemihub-desktop-linux-amd64` (WebKitGTK 4.1)
-- `gemihub-desktop-linux-arm64` (WebKitGTK 4.1)
-- `gemihub-desktop-darwin-arm64.app.zip`
-- `gemihub-desktop-windows-amd64.exe`
-- `gemihub-desktop-windows-arm64.exe`
-- `gemihub-desktop-windows-amd64.msix` (the Microsoft Store package, also
+- `kiokuflow-desktop-linux-amd64` (WebKitGTK 4.1)
+- `kiokuflow-desktop-linux-arm64` (WebKitGTK 4.1)
+- `kiokuflow-desktop-darwin-arm64.app.zip`
+- `kiokuflow-desktop-windows-amd64.exe`
+- `kiokuflow-desktop-windows-arm64.exe`
+- `kiokuflow-desktop-windows-amd64.msix` (the Microsoft Store package, also
   installable directly)
-- `gemihub-desktop-windows-arm64.msix` (the Microsoft Store package, also
+- `kiokuflow-desktop-windows-arm64.msix` (the Microsoft Store package, also
   installable directly)
 
 The Linux binaries use WebKitGTK 4.1 and support distributions such as Debian
@@ -264,29 +277,29 @@ available in the app under **Settings → General → Third-party notices**.
 On Linux, make the downloaded file executable:
 
 ```bash
-chmod +x gemihub-desktop-linux-amd64
+chmod +x kiokuflow-desktop-linux-amd64
 ```
 
 On Apple Silicon Macs running macOS 12 or newer, install the app into
 `~/Applications` with the installer (no Go, Node.js, or administrator access needed):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/takeshy/gemihub-desktop/main/scripts/install_macos.sh -o /tmp/gemihub-install.sh
-sh /tmp/gemihub-install.sh
+curl -fsSL https://raw.githubusercontent.com/takeshy/kiokuflow-desktop/main/scripts/install_macos.sh -o /tmp/kiokuflow-install.sh
+sh /tmp/kiokuflow-install.sh
 ```
 
 The installer verifies the release archive's SHA-256 digest before installation.
 Pass a release tag, such as `v1.8.0`, to choose a version that includes the
 `.app.zip` asset. Set `GEMIHUB_INSTALL_DIR` to choose another installation folder.
-Existing installations are backed up. Launch **GemiHub Desktop** from Finder.
+Existing installations are backed up. Launch **kiokuflow-desktop** from Finder.
 
-Alternatively, extract `gemihub-desktop-darwin-arm64.app.zip` from GitHub Releases
-and drag **GemiHub Desktop.app** into Applications. The app is ad-hoc signed,
+Alternatively, extract `kiokuflow-desktop-darwin-arm64.app.zip` from GitHub Releases
+and drag **kiokuflow-desktop.app** into Applications. The app is ad-hoc signed,
 without Developer ID signing or notarization. For a trusted download, remove
 its quarantine attribute before opening:
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/GemiHub Desktop.app"
+xattr -dr com.apple.quarantine "/Applications/kiokuflow-desktop.app"
 ```
 
 To build the app archive locally on a Mac:
@@ -297,7 +310,7 @@ wails3 task darwin:package ARCH=arm64
 
 ## Quick start
 
-1. Launch GemiHub Desktop and choose a local workspace directory.
+1. Launch kiokuflow-desktop and choose a local workspace directory.
 2. Click `+ Add Widget` or drag files into the window.
 3. Arrange sources in rows or columns.
 4. Enable AI in Settings and configure a provider if you want AI features.
@@ -308,7 +321,7 @@ Files can also be opened through the operating system's **Open with** action or
 as startup arguments:
 
 ```bash
-gemihub-desktop note.md research.pdf book.epub
+kiokuflow-desktop note.md research.pdf book.epub
 ```
 
 ## Development
@@ -375,7 +388,7 @@ fork of [portive/wysimark](https://github.com/portive/wysimark). We thank the
 Wysimark authors and contributors for the foundation they made available under
 the MIT License.
 
-GemiHub Desktop is built with [Wails](https://wails.io/)
+kiokuflow-desktop is built with [Wails](https://wails.io/)
 ([wailsapp/wails](https://github.com/wailsapp/wails)). We thank Lea Anthony and
 the Wails contributors for making the framework available under the MIT License.
 

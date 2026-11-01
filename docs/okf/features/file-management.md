@@ -11,7 +11,7 @@ timestamp: 2026-07-20T00:00:00+09:00
 # 主な操作
 
 * `Ctrl/Cmd + P`: File pickerを開く。
-* 左上のGemiHub Desktopメニュー: Workspace外のディレクトリを開く。すでに開いているWorkspace外ディレクトリがある場合は、新しく選択したディレクトリへ置き換える。最近開いたディレクトリも同じメニューから選べる。
+* 左上のkiokuflow-desktopメニュー: Workspace外のディレクトリを開く。すでに開いているWorkspace外ディレクトリがある場合は、新しく選択したディレクトリへ置き換える。最近開いたディレクトリも同じメニューから選べる。
 * `Ctrl/Cmd + S`: 現在のローカル状態を保存する。
 * `Ctrl/Cmd + E`: 現在のdocument contentをexportする。
 * widget toolbarのReload: ディスク上の変更を再読込する。
@@ -25,7 +25,7 @@ OSからのdropとアプリ内dragは、どちらも元を取り除いてWorkspa
 
 # 基本的な流れ
 
-1. OSから対象ファイルをGemiHub Desktopで開くか、Filesタブからフォルダを開く。
+1. OSから対象ファイルをkiokuflow-desktopで開くか、Filesタブからフォルダを開く。
 2. FileTree、file picker、drag & dropのいずれかでファイルを開く。
 3. 対応するviewer/editorで作業する。
 4. `Ctrl/Cmd + S` で保存する。ディスク側の変更を取り込む場合はReloadを使う。

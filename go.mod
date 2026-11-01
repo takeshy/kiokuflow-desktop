@@ -1,4 +1,4 @@
-module github.com/takeshy/gemihub-desktop
+module github.com/takeshy/kiokuflow-desktop
 
 go 1.26
 

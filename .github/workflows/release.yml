@@ -55,23 +55,23 @@ jobs:
           - os: ubuntu-24.04
             target: linux
             arch: amd64
-            artifact: gemihub-desktop-linux-amd64
+            artifact: kiokuflow-desktop-linux-amd64
           - os: ubuntu-24.04-arm
             target: linux
             arch: arm64
-            artifact: gemihub-desktop-linux-arm64
+            artifact: kiokuflow-desktop-linux-arm64
           - os: macos-14
             target: darwin
             arch: arm64
-            artifact: gemihub-desktop-darwin-arm64
+            artifact: kiokuflow-desktop-darwin-arm64
           - os: windows-latest
             target: windows
             arch: amd64
-            artifact: gemihub-desktop-windows-amd64.exe
+            artifact: kiokuflow-desktop-windows-amd64.exe
           - os: windows-latest
             target: windows
             arch: arm64
-            artifact: gemihub-desktop-windows-arm64.exe
+            artifact: kiokuflow-desktop-windows-arm64.exe
 
     steps:
       - name: Checkout
@@ -130,10 +130,10 @@ jobs:
           fi
           wails3 task ${{ matrix.target }}:build ARCH=${{ matrix.arch }}
           if [ "${{ matrix.target }}" = "windows" ]; then
-            cp bin/gemihub-desktop.exe bin/${{ matrix.artifact }}
+            cp bin/kiokuflow-desktop.exe bin/${{ matrix.artifact }}
             wails3 task windows:msix ARCH=${{ matrix.arch }}
           else
-            cp bin/gemihub-desktop bin/${{ matrix.artifact }}
+            cp bin/kiokuflow-desktop bin/${{ matrix.artifact }}
           fi
           if [ "${{ matrix.target }}" = "darwin" ]; then
             sh scripts/package_macos.sh ${{ matrix.arch }}
@@ -145,8 +145,8 @@ jobs:
           name: ${{ matrix.artifact }}
           path: |
             bin/${{ matrix.artifact }}
-            bin/gemihub-desktop-windows-*.msix
-            bin/gemihub-desktop-darwin-*.app.zip
+            bin/kiokuflow-desktop-windows-*.msix
+            bin/kiokuflow-desktop-darwin-*.app.zip
           if-no-files-found: error
 
   release:

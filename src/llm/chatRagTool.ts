@@ -38,6 +38,7 @@ export function formatRagSearchToolResult(
       ...(result.pageLabel ? { pageLabel: result.pageLabel } : {}),
       score: result.score,
       text: result.text,
+      ...(result.jevUnchecked ? { jevUnchecked: true } : {}),
     })),
     remainingSearches,
   });

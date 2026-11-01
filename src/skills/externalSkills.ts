@@ -137,7 +137,7 @@ function compatible(
   if (!manifest) return true;
   const entries = manifest.compatibility?.plugins;
   if (Array.isArray(entries) && entries.length) {
-    // GemiHub Desktop consumes the shared GemiHub Skill file contract while
+    // kiokuflow-desktop consumes the shared GemiHub Skill file contract while
     // retaining the pre-rename desktop and LLM Hub compatibility aliases.
     const acceptedIDs = hostID === SKILLS_HOST_ID
       ? SKILLS_COMPATIBLE_HOST_IDS

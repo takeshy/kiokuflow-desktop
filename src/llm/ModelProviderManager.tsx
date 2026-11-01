@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check, Loader2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { fetchProviderModels } from "./modelProviders";
+import { compatibleProvider, compatibleProviderPresets } from "./providerPresets";
 import {
   type ChatSettings,
   type LocalLLMFramework,
@@ -22,6 +23,8 @@ export function ModelProviderManager(
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const synced = syncActiveModelProfile(settings);
+  const latest = useRef(synced);
+  latest.current = synced;
   const patch = (id: string, changes: Partial<ModelProviderProfile>) => {
     onChange(updateModelProfile(synced, id, changes));
   };
@@ -55,12 +58,15 @@ export function ModelProviderManager(
     setError("");
     try {
       const models = await fetchProviderModels(profile);
-      patch(profile.id, {
+      const current = latest.current.modelProfiles.find(item => item.id === profile.id);
+      if (!current || ["endpoint", "apiKey", "provider", "username", "password", "localFramework"].some(key => current[key as keyof ModelProviderProfile] !== profile[key as keyof ModelProviderProfile])) return;
+      const enabledModels = current.enabledModels.filter(model => models.includes(model));
+      onChange(updateModelProfile(latest.current, profile.id, {
+        modelsVerified: true,
         availableModels: models,
-        enabledModels: profile.enabledModels.filter((model) =>
-          models.includes(model)
-        ),
-      });
+        enabledModels: enabledModels.length ? enabledModels : models.slice(0, 1),
+        model: enabledModels.includes(current.model) ? current.model : enabledModels[0] || models[0] || "",
+      }));
       if (!models.length) setError("No models were returned by this provider.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -166,13 +172,14 @@ export function ModelProviderManager(
                       <label>
                         <span>API provider</span>
                         <select
-                          value={profile.provider === "openai" &&
+                          value={compatibleProvider(profile) ?? (profile.provider === "openai" &&
                               profile.openAICompatible
                             ? "openai-compatible"
-                            : profile.provider}
+                            : profile.provider)}
                           onChange={(event) => {
                             const value = event.target.value;
-                            const compatible = value === "openai-compatible";
+                            const preset = compatibleProviderPresets[value as keyof typeof compatibleProviderPresets];
+                            const compatible = value === "openai-compatible" || !!preset;
                             const provider = compatible
                               ? "openai"
                               : value as ModelProviderProfile["provider"];
@@ -184,7 +191,9 @@ export function ModelProviderManager(
                             patch(profile.id, {
                               provider,
                               openAICompatible: compatible,
-                              endpoint: fresh.endpoint,
+                              endpoint: preset?.endpoint ?? fresh.endpoint,
+                              name: preset?.name ?? fresh.name,
+                              apiKey: "",
                               availableModels: [],
                               enabledModels: [],
                               model: "",
@@ -197,6 +206,8 @@ export function ModelProviderManager(
                           <option value="openai-compatible">
                             OpenAI Compatible
                           </option>
+                          <option value="openrouter">OpenRouter</option>
+                          <option value="opencodego">OpenCode Go</option>
                           <option value="gemini">Google Gemini</option>
                           <option value="anthropic">Anthropic</option>
                         </select>
@@ -295,7 +306,7 @@ export function ModelProviderManager(
                       patch(profile.id, { apiKey: event.target.value })}
                   />
                 </label>
-                <label>
+                {profile.local && <label>
                   <span>Enabled model IDs (comma-separated)</span>
                   <input
                     value={profile.enabledModels.join(", ")}
@@ -318,7 +329,7 @@ export function ModelProviderManager(
                       });
                     }}
                   />
-                </label>
+                </label>}
                 <label className="check">
                   <span>Enabled</span>
                   <input
@@ -331,12 +342,12 @@ export function ModelProviderManager(
                 <div className="model-provider-actions">
                   <button
                     type="button"
-                    disabled={busy === profile.id || !profile.endpoint}
+                    disabled={!!busy || !profile.endpoint || (!profile.local && !profile.apiKey.trim())}
                     onClick={() => void fetchModels(profile)}
                   >
                     {busy === profile.id
                       ? <Loader2 size={13} className="spin" />
-                      : <RefreshCw size={13} />}Fetch models
+                      : <RefreshCw size={13} />}Verify & fetch models
                   </button>
                   <button
                     type="button"
@@ -346,6 +357,7 @@ export function ModelProviderManager(
                     <Trash2 size={13} />Delete
                   </button>
                 </div>
+                {!profile.local && !profile.modelsVerified && <small>Verify this connection before selecting chat models.</small>}
                 {!!profile.availableModels.length && (
                   <fieldset className="model-checklist">
                     <legend>Enabled models</legend>

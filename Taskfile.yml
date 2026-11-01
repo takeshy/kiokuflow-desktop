@@ -7,7 +7,7 @@ includes:
   linux: ./build/linux/Taskfile.yml
 
 vars:
-  APP_NAME: gemihub-desktop
+  APP_NAME: kiokuflow-desktop
   BIN_DIR: bin
 
 tasks:

@@ -6,7 +6,7 @@ tags: [history, trash, restore, safety]
 timestamp: 2026-07-20T00:00:00+09:00
 ---
 
-GemiHub Desktopはファイルを上書きする前に履歴を記録し、最大50世代を保持します。History画面ではcheckpointを選び、現在との差分をunifiedまたはsplit表示で確認して復元できます。開いた時点、idle、focus離脱、手動保存、復元、reloadなどが履歴理由として表示されます。
+kiokuflow-desktopはファイルを上書きする前に履歴を記録し、最大50世代を保持します。History画面ではcheckpointを選び、現在との差分をunifiedまたはsplit表示で確認して復元できます。開いた時点、idle、focus離脱、手動保存、復元、reloadなどが履歴理由として表示されます。
 
 # ファイル操作
 

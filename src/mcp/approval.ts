@@ -44,7 +44,7 @@ export function requireMcpApproval(server: ApprovalServer, tool: string, args: R
     if (choice === "always") {
       const latest = loadChatSettings(); const target = latest.mcpServers.find(item => sameMcpServer(item, server));
       if (!target) throw new Error("MCP server settings changed during approval");
-      target.allowedTools = [...new Set([...(target.allowedTools || []), tool])]; saveChatSettings(latest);
+      target.allowedTools = [...new Set([...(target.allowedTools || []), tool])]; await saveChatSettings(latest);
       window.dispatchEvent(new Event("mcp-approval-settings-changed"));
     }
   };

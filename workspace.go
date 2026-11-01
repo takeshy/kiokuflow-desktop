@@ -31,7 +31,7 @@ func (a *App) workspaceConfigDirPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(config, appID), nil
+	return filepath.Join(config, appDataID), nil
 }
 
 func (a *App) defaultWorkspacePath(configDir string) (string, error) {

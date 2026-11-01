@@ -16,7 +16,35 @@ import {
   selectModelProfile,
   selectSpeechEndpoint,
   updateModelProfile,
+  activeChatModelOptions,
+  assertChatModelEnabled,
+  syncActiveModelProfile,
 } from "./settings.ts";
+import { expect } from "vitest";
+
+test("Chat lists only the active provider and never re-enables an unchecked model", () => {
+  const first = { ...newModelProfile(), id: "first", apiKey: "key", availableModels: ["gpt-6.1-sol", "gpt-6.1-terra"], enabledModels: ["gpt-6.1-sol"], modelsVerified: true, model: "gpt-6.1-sol" };
+  const second = { ...newModelProfile("gemini"), id: "second", apiKey: "other-key", availableModels: ["gemini-test"], enabledModels: ["gemini-test"], modelsVerified: true, model: "gemini-test" };
+  const selected = selectModelProfile({ ...defaultChatSettings, modelProfiles: [first, second] }, first.id);
+  expect(activeChatModelOptions(selected).map(item => item.model)).toEqual(["gpt-6.1-sol"]);
+  expect(configuredModelOptions(selected).map(item => item.model)).toEqual(["gpt-6.1-sol", "gemini-test"]);
+  expect(() => assertChatModelEnabled(selected)).not.toThrow();
+  const removed = updateModelProfile(selected, first.id, { enabledModels: [] });
+  expect(syncActiveModelProfile(removed).modelProfiles[0].enabledModels).toEqual([]);
+  expect(activeChatModelOptions(removed)).toEqual([]);
+  expect(() => assertChatModelEnabled(removed)).toThrow("Verify");
+  const changed = updateModelProfile(selected, first.id, { apiKey: "replacement" });
+  expect(changed.modelProfiles[0].modelsVerified).toBe(false);
+  expect(activeChatModelOptions(changed)).toEqual([]);
+  expect(() => assertChatModelEnabled({ ...selected, apiKey: "" })).toThrow("Unlock");
+});
+
+test("Jev OpenRouter mode never silently falls back to a direct key", () => {
+  const resolved = resolveRAGSetting({ ...defaultChatSettings, jevUseOpenRouter: true, jevApiKey: "direct-key", jevRagFilterEnabled: true }, defaultRAGSetting);
+  expect(resolved.jevUseOpenRouter).toBe(true);
+  expect(resolved.jevApiKey).toBe("");
+  expect(resolveRAGSetting({ ...defaultChatSettings, jevRagFilterEnabled: true }, { ...defaultRAGSetting, jevRagFilterEnabled: false }).jevRagFilterEnabled).toBe(false);
+});
 
 test("speech settings keep browser as default and load compatible endpoints with an empty key", () => {
   assertEquals(
@@ -72,7 +100,7 @@ test("read-aloud settings load with clamped values", () => {
 
 test("current OpenAI and Gemini model choices omit Gemini 2.5", () => {
   assertEquals(chatModelChoices.openai.includes("gpt-6-astra"), true);
-  assertEquals(chatModelChoices.openai.includes("gpt-5.6-sol"), true);
+  assertEquals(chatModelChoices.openai.includes("gpt-6.1-sol"), true);
   assertEquals(
     chatModelChoices.gemini.some((model) => model.includes("2.5")),
     false,
@@ -206,6 +234,8 @@ test("multiple API and local profiles become distinct selectable models", () => 
     name: "OpenRouter",
     endpoint: "https://openrouter.ai/api/v1",
     enabledModels: ["model-a", "model-b"],
+    availableModels: ["model-a", "model-b"],
+    modelsVerified: true,
     model: "model-a",
   };
   const local = {
@@ -306,7 +336,9 @@ test("editing the active profile keeps type and credentials in sync", () => {
       openAICompatible: true,
       endpoint: "https://example.test/v1",
       apiKey: "pasted-key",
-      model: "custom-model",
+      model: "",
+      enabledModels: [],
+      modelsVerified: false,
     },
   });
 });

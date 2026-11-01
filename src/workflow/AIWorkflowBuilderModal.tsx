@@ -9,13 +9,12 @@ import {
   readWorkspaceFile as readWorkspaceFile,
 } from "../lib/wailsBackend";
 import {
-  chatModelChoices,
+  configuredModelOptions,
   type ChatProvider,
   type ChatSettings,
   cliNames,
   type CLIType,
   configuredChatProviders,
-  providerDefaults,
   settingsForModel,
   switchChatProvider,
 } from "../llm/settings";
@@ -167,30 +166,17 @@ export function workflowBuilderModelOptions(
       label: cliNames[type],
     }));
   }
-  return [
-    ...new Set([
-      ...settings.modelProfiles.filter((item) =>
-        item.provider === provider && item.enabled
-      ).flatMap((item) => item.enabledModels),
-      ...chatModelChoices[provider],
-    ]),
-  ].filter(Boolean).map((value) => ({ value, label: value }));
+  return [...new Set(configuredModelOptions(settings).filter(option => option.provider === provider).map(option => option.model))]
+    .map(value => ({ value, label: value }));
 }
 
 export function workflowGenerationContext(
   settings: ChatSettings,
   selectedModel = settings.model,
 ) {
+  const available = configuredModelOptions(settings).map(option => option.model).filter(Boolean);
   return {
-    models: [
-      ...new Set([
-        selectedModel,
-        settings.model,
-        ...settings.modelProfiles.filter((profile) => profile.enabled).flatMap(
-          (profile) => profile.enabledModels,
-        ),
-      ].filter(Boolean)),
-    ],
+    models: [...new Set([selectedModel, ...available].filter(model => available.includes(model)))],
     ragSettings: Object.keys(settings.ragSettings),
     mcpServers: settings.mcpServers.filter((server) => server.enabled).map(
       (server) => server.name,
@@ -199,7 +185,7 @@ export function workflowGenerationContext(
 }
 
 export function buildWorkflowReviewSystemPrompt(spec: string): string {
-  return `You are a precise GemiHub Desktop workflow quality reviewer. Evaluate the complete workflow primarily against the user's original request. The approved plan is implementation guidance, not an independent source of new requirements.
+  return `You are a precise kiokuflow-desktop workflow quality reviewer. Evaluate the complete workflow primarily against the user's original request. The approved plan is implementation guidance, not an independent source of new requirements.
 
 Requirement priority and severity:
 - Treat behavior explicitly requested by the user or additional requirements as mandatory.
@@ -441,7 +427,7 @@ export function AIWorkflowBuilderModal({
         ? "Return exactly two fenced blocks and no other text: first a `skill-instructions` Markdown block, then one complete `hub-workflow` YAML block."
         : "Return exactly one complete `hub-workflow` fenced YAML block and no other text.";
       setExternalPrompt(
-        `You are a workflow author for GemiHub Desktop. Follow the complete specification below.\n\n${authoringSpec}\n\nOUTPUT CONTRACT:\n${outputContract}\n\n${
+        `You are a workflow author for kiokuflow-desktop. Follow the complete specification below.\n\n${authoringSpec}\n\nOUTPUT CONTRACT:\n${outputContract}\n\n${
           mode === "create" ? "Create" : "Modify"
         } the ${artifactKind} named "${name}".\n\nUSER REQUEST:\n${request}${
           additionalInstructions
@@ -666,8 +652,8 @@ export function AIWorkflowBuilderModal({
       let response = await call(
         `${
           feedback
-            ? "You repair a GemiHub Desktop workflow after a quality review."
-            : "You are a GemiHub Desktop workflow author."
+            ? "You repair a kiokuflow-desktop workflow after a quality review."
+            : "You are a kiokuflow-desktop workflow author."
         } ${authoringSpec}${skillSpec}`,
         generationPrompt,
         references.attachments,
@@ -683,7 +669,7 @@ export function AIWorkflowBuilderModal({
         attempt++
       ) {
         response = await call(
-          `You repair invalid GemiHub Desktop workflow output. ${authoringSpec}${skillSpec}`,
+          `You repair invalid kiokuflow-desktop workflow output. ${authoringSpec}${skillSpec}`,
           `The previous output is invalid. ${
             artifactKind === "skill"
               ? "Return one skill-instructions block followed by one complete valid hub-workflow block."
@@ -842,7 +828,7 @@ export function AIWorkflowBuilderModal({
                   onChange={(event) => {
                     const next = event.target.value as ChatProvider;
                     setProvider(next);
-                    setModel(providerDefaults(next).model);
+                    setModel(workflowBuilderModelOptions(settings, next)[0]?.value || "");
                     if (next === "cli") {
                       setCLIType((current) =>
                         settings.verifiedCliTypes.includes(current)

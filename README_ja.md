@@ -1,16 +1,16 @@
 <p align="center">
-  <img src="build/appicon.png" alt="GemiHub Desktop アイコン" width="128">
+  <img src="build/appicon.png" alt="kiokuflow-desktop アイコン" width="128">
 </p>
 
-# GemiHub Desktop
+# kiokuflow-desktop
 
 Chatはサイドバーの通常幅・拡張幅のワンクリック切替、コンパクトなMarkdown手動保存、自動履歴の保存件数上限に対応しています。手動ノートは`YYYYMMDD-HHmmss_チャットタイトル.md`形式で、履歴上限の初期値は100件、`0`は無制限です。
 
-> **AI が賢くなった今、データの価値はどんどん高まっています。**<br> **GemiHub DesktopはアイデアのためのIDE。感想、メモ、資料、活動記録や秘密のトークンなどあらゆる情報を自分のパソコンのディスクに集めて、AIのコンテキストに変える、オープンなワークスペースです。**
+> **AI が賢くなった今、データの価値はどんどん高まっています。**<br> **kiokuflow-desktopはアイデアのためのIDE。感想、メモ、資料、活動記録や秘密のトークンなどあらゆる情報を自分のパソコンのディスクに集めて、AIのコンテキストに変える、オープンなワークスペースです。**
 [English README](README.md)
 
 [Microsoft Storeで入手](https://apps.microsoft.com/detail/9PH8RH26NTD5) ·
-[プライバシーポリシー](https://takeshy.github.io/gemihub-desktop/privacy.html)
+[プライバシーポリシー](https://takeshy.github.io/kiokuflow-desktop/privacy.html)
 
 ![PDFとHTMLの調査ノートを比較するGemiHubワークスペース](docs/images/col.png)
 
@@ -66,7 +66,7 @@ MCP Server、Agent Skill、OKF bundle、PluginとAIをフルで活用できる�
 
 ## PluginでWorkspaceを育てる
 
-GemiHub Desktopは、内蔵のドキュメント機能やAI機能だけに限定されません。**Settings
+kiokuflow-desktopは、内蔵のドキュメント機能やAI機能だけに限定されません。**Settings
 → Plugins**からPluginを追加すると、用途に特化したアプリケーションを同じローカルWorkspace内で利用できます。
 
 同じ画面から、ポータブルな[Agent Plugins v1.0.0](https://agent-plugins.org/)も利用できます。公開GitHub
@@ -154,7 +154,7 @@ ExplorerやFinderから関連付けられたファイルを開くと、特殊な
 
 ## アーキテクチャ
 
-GemiHub Desktop は Go、Wails、Node.js、Vite、React、Wysimark-lite、pdf.js
+kiokuflow-desktop は Go、Wails、Node.js、Vite、React、Wysimark-lite、pdf.js
 で構築されています。
 
 デスクトップシェルが、ユーザーの選んだワークスペース内のローカルファイル操作を提供します。React
@@ -189,13 +189,13 @@ Node.js や Go は必要ありません。
 
 配布される実行ファイル：
 
-- `gemihub-desktop-linux-amd64`（WebKitGTK 4.1）
-- `gemihub-desktop-linux-arm64`（WebKitGTK 4.1）
-- `gemihub-desktop-darwin-arm64.app.zip`
-- `gemihub-desktop-windows-amd64.exe`
-- `gemihub-desktop-windows-arm64.exe`
-- `gemihub-desktop-windows-amd64.msix`（Microsoft Storeと同じpackage。直接installも可能）
-- `gemihub-desktop-windows-arm64.msix`（Microsoft Storeと同じpackage。直接installも可能）
+- `kiokuflow-desktop-linux-amd64`（WebKitGTK 4.1）
+- `kiokuflow-desktop-linux-arm64`（WebKitGTK 4.1）
+- `kiokuflow-desktop-darwin-arm64.app.zip`
+- `kiokuflow-desktop-windows-amd64.exe`
+- `kiokuflow-desktop-windows-arm64.exe`
+- `kiokuflow-desktop-windows-amd64.msix`（Microsoft Storeと同じpackage。直接installも可能）
+- `kiokuflow-desktop-windows-arm64.msix`（Microsoft Storeと同じpackage。直接installも可能）
 
 Linux版はWebKitGTK 4.1を使用し、Debian 12/13やUbuntu 24.04以降に対応
 します。runtime libraryが未installの場合は、次のcommandでinstallしてください。
@@ -210,29 +210,29 @@ sudo apt install libwebkit2gtk-4.1-0
 Linux では、ダウンロードしたファイルに実行権限を付けます。
 
 ```bash
-chmod +x gemihub-desktop-linux-amd64
+chmod +x kiokuflow-desktop-linux-amd64
 ```
 
 macOS 12以降のApple Silicon Macでは、次のinstallerで `~/Applications` に
 アプリを配置できます。Go、Node.js、管理者権限は不要です。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/takeshy/gemihub-desktop/main/scripts/install_macos.sh -o /tmp/gemihub-install.sh
-sh /tmp/gemihub-install.sh
+curl -fsSL https://raw.githubusercontent.com/takeshy/kiokuflow-desktop/main/scripts/install_macos.sh -o /tmp/kiokuflow-install.sh
+sh /tmp/kiokuflow-install.sh
 ```
 
 installerは配布archiveのSHA-256を検証してからinstallします。
 `.app.zip` を含むreleaseのtag（例: `v1.8.0`）を引数に渡すとversionを指定できます。
 配置先は環境変数 `GEMIHUB_INSTALL_DIR` で変更できます。既存アプリはbackupされます。
-Finderから **GemiHub Desktop** を起動してください。
+Finderから **kiokuflow-desktop** を起動してください。
 
-手動の場合はGitHub Releasesの `gemihub-desktop-darwin-arm64.app.zip` を展開し、
-**GemiHub Desktop.app** をApplicationsへ移動してください。アプリはad-hoc署名で、
+手動の場合はGitHub Releasesの `kiokuflow-desktop-darwin-arm64.app.zip` を展開し、
+**kiokuflow-desktop.app** をApplicationsへ移動してください。アプリはad-hoc署名で、
 Developer ID署名・公証はありません。信頼できるdownloadについて、起動前に
 quarantine属性を削除してください。
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/GemiHub Desktop.app"
+xattr -dr com.apple.quarantine "/Applications/kiokuflow-desktop.app"
 ```
 
 Mac上でapp archiveをbuildするには、次を実行します。
@@ -243,7 +243,7 @@ wails3 task darwin:package ARCH=arm64
 
 ## クイックスタート
 
-1. GemiHub Desktop を起動し、ローカルのワークスペースフォルダを選びます。
+1. kiokuflow-desktop を起動し、ローカルのワークスペースフォルダを選びます。
 2. `+ Add Widget` を押すか、ファイルをウィンドウへドラッグします。
 3. 資料を行または列に配置します。
 4. AI を使う場合は Settings で有効にし、Provider を設定します。
@@ -253,7 +253,7 @@ wails3 task darwin:package ARCH=arm64
 OS の「プログラムから開く」または起動引数からもファイルを開けます。
 
 ```bash
-gemihub-desktop note.md research.pdf book.epub
+kiokuflow-desktop note.md research.pdf book.epub
 ```
 
 ## 開発
@@ -320,7 +320,7 @@ GemiHub の WYSIWYG Markdown
 を使用しています。MIT License のもとで基盤を公開してくださった Wysimark
 の作者とコントリビューターの皆様に、敬意と感謝を表します。
 
-GemiHub Desktop は
+kiokuflow-desktop は
 [Wails](https://wails.io/)（[wailsapp/wails](https://github.com/wailsapp/wails)）で構築されています。MIT
 License のもとでフレームワークを公開してくださった Lea Anthony 氏と Wails
 のコントリビューターの皆様に、敬意と感謝を表します。

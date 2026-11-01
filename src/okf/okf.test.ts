@@ -59,7 +59,7 @@ const fakeBuiltinDocs = [
   {
     path: "index.md",
     type: "Index",
-    title: "GemiHub Desktop Help",
+    title: "kiokuflow-desktop Help",
     description: "Feature guide index.",
     tags: [],
     body: "Overview. See features/ai-chat.md for AI Chat details.",
@@ -86,7 +86,7 @@ test("OKF discovers only top-level bundles and uses index titles", async () => {
 test("built-in OKF is available without an external root", async () => {
   assertEquals(getBuiltinOkfBundle(), {
     id: BUILTIN_OKF_BUNDLE_ID,
-    name: "GemiHub Desktop Help",
+    name: "kiokuflow-desktop Help",
     builtin: true,
   });
   const prompt = await buildOkfSystemPrompt(
@@ -94,7 +94,7 @@ test("built-in OKF is available without an external root", async () => {
     [BUILTIN_OKF_BUNDLE_ID],
     () => Promise.resolve(fakeBuiltinDocs),
   );
-  assertStringIncludes(prompt, `## OKF bundle: GemiHub Desktop Help (bundleId=${BUILTIN_OKF_BUNDLE_ID})`);
+  assertStringIncludes(prompt, `## OKF bundle: kiokuflow-desktop Help (bundleId=${BUILTIN_OKF_BUNDLE_ID})`);
   assertStringIncludes(prompt, "Feature guide index.");
   assertStringIncludes(prompt, "See features/ai-chat.md for AI Chat details.");
   // Only the index is inlined; other documents are fetched on demand.

@@ -67,6 +67,110 @@ func (function ragRoundTripper) RoundTrip(request *http.Request) (*http.Response
 	return function(request)
 }
 
+func TestJevProductionEndpoints(t *testing.T) {
+	previous := ragHTTPClient
+	t.Cleanup(func() { ragHTTPClient = previous })
+	for _, useOpenRouter := range []bool{false, true} {
+		wantURL, wantModel := "https://api.typesafe.ai/v1/systemone", "jev-latest"
+		if useOpenRouter {
+			wantURL, wantModel = "https://openrouter.ai/api/alpha/decisions", "~typesafe/jev-latest"
+		}
+		calls := 0
+		ragHTTPClient = &http.Client{Transport: ragRoundTripper(func(r *http.Request) (*http.Response, error) {
+			calls++
+			if r.URL.String() != wantURL || r.Method != http.MethodPost || r.Header.Get("Authorization") != "Bearer test-key" {
+				t.Fatalf("unexpected Jev destination or authentication: %s %s", r.Method, r.URL)
+			}
+			if r.Header.Get("TypeSafe-Danger-Zone-Long-Context") != "true" {
+				t.Fatal("long context header missing")
+			}
+			var body struct {
+				Model string `json:"model"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Model != wantModel {
+				t.Fatalf("unexpected model: %q (%v)", body.Model, err)
+			}
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"answers":{"result_0":{"choice":"keep"}}}`))}, nil
+		})}
+		results, err := filterRAGResultsWithJev("query", []RAGSearchResult{{Text: "evidence"}}, "test-key", useOpenRouter, "")
+		if err != nil || len(results) != 1 || calls != 1 {
+			t.Fatalf("unexpected result: %v, %v, calls=%d", results, err, calls)
+		}
+	}
+}
+
+func TestJevSearchUntilMatchUsesSuccessiveBatches(t *testing.T) {
+	previous := ragHTTPClient
+	t.Cleanup(func() { ragHTTPClient = previous })
+	for _, repeat := range []bool{false, true} {
+		calls := 0
+		ragHTTPClient = &http.Client{Transport: ragRoundTripper(func(r *http.Request) (*http.Response, error) {
+			calls++
+			var body struct {
+				Questions map[string]struct {
+					Instructions string `json:"instructions"`
+				} `json:"questions"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.Questions) != 1 {
+				t.Fatalf("unexpected candidate batch: %v, %v", body, err)
+			}
+			want := fmt.Sprintf("candidate-%d", calls)
+			if !strings.Contains(body.Questions["result_0"].Instructions, want) {
+				t.Fatalf("candidate judged repeatedly or out of order: %s", body.Questions["result_0"].Instructions)
+			}
+			choice := "exclude"
+			if calls == 2 {
+				choice = "keep"
+			}
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(fmt.Sprintf(`{"answers":{"result_0":{"choice":%q}}}`, choice)))}, nil
+		})}
+		results, err := judgeRAGCandidates("query", []RAGSearchResult{{Text: "candidate-1"}, {Text: "candidate-2"}, {Text: "candidate-3"}}, RAGSetting{TopK: 1, JevRAGFilterEnabled: true, JevAPIKey: "key", SearchUntilMatch: repeat})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if repeat && (len(results) != 1 || results[0].Text != "candidate-2" || calls != 2) {
+			t.Fatalf("unexpected repeat results: %v (calls=%d)", results, calls)
+		}
+		if !repeat && (len(results) != 0 || calls != 1) {
+			t.Fatalf("unexpected single batch: %v (calls=%d)", results, calls)
+		}
+	}
+}
+
+func TestJevLockedKeyFallsBackAndMediaIsUnchecked(t *testing.T) {
+	previous := ragHTTPClient
+	t.Cleanup(func() { ragHTTPClient = previous })
+	ragHTTPClient = &http.Client{Transport: ragRoundTripper(func(r *http.Request) (*http.Response, error) {
+		t.Fatal("locked keys or media markers must not be sent to Jev")
+		return nil, fmt.Errorf("unexpected request")
+	})}
+	results, err := judgeRAGCandidates("query", []RAGSearchResult{{Text: "first"}, {Text: "second"}}, RAGSetting{TopK: 1, JevRAGFilterEnabled: true, SearchUntilMatch: true})
+	if err != nil || len(results) != 1 || results[0].Text != "first" {
+		t.Fatalf("locked key fallback: %v, %v", results, err)
+	}
+	results, err = judgeRAGCandidates("query", []RAGSearchResult{{Text: "[pdf: scan.pdf]"}}, RAGSetting{TopK: 1, JevRAGFilterEnabled: true, JevAPIKey: "key", SearchUntilMatch: true})
+	if err != nil || len(results) != 1 || !results[0].JevUnchecked {
+		t.Fatalf("media marker: %v, %v", results, err)
+	}
+}
+
+func TestVerifyJevRequiresExpectedDecision(t *testing.T) {
+	previous := ragHTTPClient
+	t.Cleanup(func() { ragHTTPClient = previous })
+	for _, choice := range []string{"keep", "exclude"} {
+		ragHTTPClient = &http.Client{Transport: ragRoundTripper(func(r *http.Request) (*http.Response, error) {
+			if r.URL.String() != "https://api.typesafe.ai/v1/systemone" {
+				t.Fatalf("unexpected verification endpoint: %s", r.URL)
+			}
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(fmt.Sprintf(`{"answers":{"result_0":{"choice":%q}}}`, choice)))}, nil
+		})}
+		err := NewApp().VerifyJev("test-key", false)
+		if (err == nil) != (choice == "keep") {
+			t.Fatalf("verification accepted an unexpected decision: choice=%s, err=%v", choice, err)
+		}
+	}
+}
+
 func TestChunkRAGText(t *testing.T) {
 	if got := chunkRAGText("", 100, 20); len(got) != 0 {
 		t.Fatalf("expected empty chunks, got %#v", got)

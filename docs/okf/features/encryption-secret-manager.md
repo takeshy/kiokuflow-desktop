@@ -44,3 +44,12 @@ markerを使うため、通常文書をこの形で始めるのは避けてく�
 # 関連機能
 
 [AI Chat](/features/ai-chat.md)・[Workflow](/features/workflows.md)（履歴暗号化は同じ鍵の仕組みを使います）、[Discord bot](/features/discord-bot.md)（tokenの保管先として推奨）。
+
+# API keyと共通password
+
+同じ鍵と共通passwordで、AI provider・Jev・embedding・音声入力などのAPI keyも
+保護します。鍵を作成すると既存のキーを暗号化して保存し、以後は公開鍵で保存するため、
+ロック中でも新しいキーを登録できます。再起動後は **Settings > Encryption** で共通passwordを
+入力してまとめて解除します。ロック中に別の設定を変更しても保存済みのキーは保持されます。
+公開鍵をまだ作成していない既存設定は従来どおり平文で保存されるため、
+API keyを保護するには最初に共通passwordを設定してください。

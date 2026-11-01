@@ -155,13 +155,14 @@ import {
   type CLIType,
   configuredChatProviders,
   defaultRAGSetting,
-  getOpenRouterAPIKey,
   loadChatSettings,
   resolveRAGSetting,
   saveChatSettings,
+  unlockChatSettings,
   switchChatProvider,
 } from "./llm/settings";
 import { type ActiveSelection, formatActiveSelection } from "./llm/selection";
+import { JevSettingsPanel } from "./llm/JevSettingsPanel";
 import { ModelProviderManager } from "./llm/ModelProviderManager";
 import { SpeechSettingsPanel } from "./llm/SpeechSettingsPanel";
 import { McpHttpClient, McpHttpError } from "./mcp/httpClient";
@@ -1405,7 +1406,6 @@ export default function App() {
   const selectedRAG = chatSettings.selectedRagSetting
     ? chatSettings.ragSettings[chatSettings.selectedRagSetting]
     : undefined;
-  const openRouterAPIKey = getOpenRouterAPIKey(chatSettings);
   useEffect(() =>
     onRAGSyncProgress((progress) => {
       if (progress.name !== chatSettings.selectedRagSetting) return;
@@ -1628,7 +1628,16 @@ export default function App() {
   }, [isDark]);
 
   useEffect(() => {
-    saveChatSettings(chatSettings);
+    void saveChatSettings(chatSettings).catch((error) => setHistoryEncryptionStatus(`Settings could not be saved: ${error instanceof Error ? error.message : String(error)}`));
+  }, [chatSettings]);
+
+  useEffect(() => {
+    const unlock = () => {
+      void saveChatSettings(chatSettings).then(unlockChatSettings).then(setChatSettings)
+        .catch((error) => setHistoryEncryptionStatus(`API keys could not be unlocked: ${error instanceof Error ? error.message : String(error)}`));
+    };
+    window.addEventListener("llm-hub:history-encryption-unlocked", unlock);
+    return () => window.removeEventListener("llm-hub:history-encryption-unlocked", unlock);
   }, [chatSettings]);
 
   const kakerattaSettings = aiEnabled ? chatSettings : {
@@ -3385,7 +3394,7 @@ export default function App() {
                         </div>
                         <div>
                           <span className="encryption-settings-title-row">
-                            <strong>History encryption</strong>
+                            <strong>API key and history encryption</strong>
                             <i
                               className={historyEncryptionReady
                                 ? "configured"
@@ -3397,8 +3406,9 @@ export default function App() {
                             </i>
                           </span>
                           <p>
-                            Protect locally stored conversations and workflow
-                            logs with a password-protected encryption key.
+                            Protect API keys, conversations and workflow logs
+                            with one password-protected encryption key. API keys
+                            use the public key when saved and are unlocked for this session.
                           </p>
                         </div>
                       </section>
@@ -3617,6 +3627,9 @@ export default function App() {
                             settings={chatSettings}
                             onChange={setChatSettings}
                           />
+                          <button type="button" className="settings-choice" onClick={() => setSettingsSection("encryption")}>
+                            {historyEncryptionReady ? "Unlock API keys with the common password" : "Set up a common password to encrypt saved API keys"}
+                          </button>
                           {chatSettings.provider !== "vertex" && (
                             <button
                               type="button"
@@ -4119,7 +4132,7 @@ export default function App() {
                         <strong>Local agent permissions</strong>
                         <p>
                           Codex App Server runs in a read-only sandbox. File
-                          changes use GemiHub's proposal tools and still require
+                          changes use kiokuflow-desktop's proposal tools and still require
                           Apply in Chat. Antigravity runs with its own CLI
                           permission and sandbox settings.
                         </p>
@@ -5187,75 +5200,7 @@ export default function App() {
                           </p>
                         </div>
                       </section>
-                      <section className="jev-settings-card">
-                        <header>
-                          <div>
-                            <strong>Jev</strong>
-                            <small>
-                              Filter vector matches by whether they answer or
-                              materially support the query. This applies to RAG
-                              Search, Chat, Workflows, and Discord.
-                            </small>
-                          </div>
-                        </header>
-                        <label className="settings-check">
-                          <input
-                            type="checkbox"
-                            checked={chatSettings.jevRagFilterEnabled}
-                            onChange={(event) =>
-                              setChatSettings((current) => ({
-                                ...current,
-                                jevRagFilterEnabled: event.target.checked,
-                              }))}
-                          />
-                          Keep only matching RAG results
-                        </label>
-                        {chatSettings.jevRagFilterEnabled && (
-                          <>
-                            {!!openRouterAPIKey && (
-                              <label className="settings-check jev-child-setting">
-                                <input
-                                  type="checkbox"
-                                  checked={chatSettings.jevUseOpenRouter}
-                                  onChange={(event) =>
-                                    setChatSettings((current) => ({
-                                      ...current,
-                                      jevUseOpenRouter: event.target.checked,
-                                    }))}
-                                />
-                                Use the configured OpenRouter key
-                              </label>
-                            )}
-                            {(!chatSettings.jevUseOpenRouter ||
-                              !openRouterAPIKey) && (
-                              <label className="settings-field jev-child-setting">
-                                <span>Jev API key</span>
-                                <input
-                                  type="password"
-                                  value={chatSettings.jevApiKey}
-                                  placeholder="jv_live_…"
-                                  onChange={(event) =>
-                                    setChatSettings((current) => ({
-                                      ...current,
-                                      jevApiKey: event.target.value.trim(),
-                                    }))}
-                                />
-                                <small className="settings-hint">
-                                  API key from jevtypesafeai.com. Not required
-                                  when using OpenRouter.
-                                </small>
-                              </label>
-                            )}
-                            {!openRouterAPIKey &&
-                              !chatSettings.jevApiKey.trim() && (
-                              <div className="settings-status">
-                                Enter a Jev API key, or configure an OpenRouter
-                                API provider first.
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </section>
+                      <JevSettingsPanel settings={chatSettings} onChange={setChatSettings} />
                       <div className="rag-setting-selector">
                         <select
                           className="settings-select"
@@ -5878,6 +5823,15 @@ export default function App() {
                               />
                             </label>
                           </div>
+                          <label className="settings-check">
+                            <input type="checkbox" checked={selectedRAG.jevRagFilterEnabled} onChange={event => setChatSettings(current => ({ ...current, ragSettings: { ...current.ragSettings, [current.selectedRagSetting!]: { ...current.ragSettings[current.selectedRagSetting!], jevRagFilterEnabled: event.target.checked } } }))} />
+                            Jev relevance filtering for this index
+                          </label>
+                          <label className="settings-check">
+                            <input type="checkbox" checked={selectedRAG.searchUntilMatch ?? false} disabled={!selectedRAG.jevRagFilterEnabled} onChange={event => setChatSettings(current => ({ ...current, ragSettings: { ...current.ragSettings, [current.selectedRagSetting!]: { ...current.ragSettings[current.selectedRagSetting!], searchUntilMatch: event.target.checked } } }))} />
+                            Search until a match (up to 1,000 candidates)
+                          </label>
+                          <small className="settings-hint">Jev must also be enabled above. Top K is the candidate batch size when filtering.</small>
                           <label className="settings-field">
                             <span>Retrieved chunks: {selectedRAG.topK}</span>
                             <input

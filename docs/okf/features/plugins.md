@@ -1,7 +1,7 @@
 ---
 type: Product Feature
 title: Plugins
-description: 権限を宣言した拡張機能を追加し、view、command、Dashboard widget、toolなどをGemiHub Desktopへ組み込む機能。
+description: 権限を宣言した拡張機能を追加し、view、command、Dashboard widget、toolなどをkiokuflow-desktopへ組み込む機能。
 tags: [plugins, extensions, permissions, github]
 timestamp: 2026-07-15T00:00:00+09:00
 ---

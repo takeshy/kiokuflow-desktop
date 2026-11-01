@@ -618,7 +618,7 @@ async function connectWorkflowMcp(
       params: {
         protocolVersion: "2025-03-26",
         capabilities: {},
-        clientInfo: { name: "gemihub-desktop", version: "0.1.0" },
+        clientInfo: { name: "kiokuflow-desktop", version: "0.1.0" },
       },
     }),
   });

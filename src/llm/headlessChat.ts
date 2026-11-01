@@ -1,6 +1,7 @@
 import { chat, type ChatMessage } from "../lib/wailsBackend";
 import {
   type ChatSettings,
+  assertChatModelEnabled,
   selectConfiguredModel,
 } from "./settings";
 
@@ -22,8 +23,10 @@ export async function generateHeadlessText(
   const settings = options.model
     ? selectConfiguredModel(base, options.model)
     : base;
+  assertChatModelEnabled(settings);
   const readFiles = options.readFiles === true && settings.provider !== "cli";
   const result = await chat({
+    conversationId: crypto.randomUUID(),
     provider: settings.provider,
     endpoint: settings.endpoint,
     apiKey: settings.apiKey,

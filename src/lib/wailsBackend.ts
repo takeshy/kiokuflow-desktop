@@ -120,6 +120,7 @@ export interface RAGSetting {
   jevRagFilterEnabled: boolean;
   jevApiKey: string;
   jevUseOpenRouter: boolean;
+  searchUntilMatch?: boolean;
 }
 
 export interface VertexOAuthClient {
@@ -164,6 +165,7 @@ export interface RAGSyncProgress {
 }
 
 export interface RAGSearchResult {
+  jevUnchecked?: boolean;
   filePath: string;
   text: string;
   score: number;
@@ -263,6 +265,7 @@ export interface ChatUsage {
 }
 
 export interface ChatRequest {
+  conversationId?: string;
   provider: "openai" | "gemini" | "vertex" | "anthropic" | "cli";
   endpoint: string;
   apiKey: string;
@@ -457,6 +460,7 @@ export interface MCPStdioStartRequest {
 }
 
 interface WailsAppApi {
+  VerifyJev: (apiKey: string, useOpenRouter: boolean) => Promise<void>;
   GetWorkspaceState: () => Promise<WorkspaceState>;
   SetWorkspaceDirectory: (path: string) => Promise<WorkspaceState>;
   SelectWorkspaceDirectory: () => Promise<string>;
@@ -1327,6 +1331,12 @@ export async function chat(request: ChatRequest): Promise<ChatResult> {
   const api = appApi();
   if (!api) throw new Error("Chat requires the desktop app.");
   return await api.Chat(request);
+}
+
+export async function verifyJev(apiKey: string, useOpenRouter: boolean): Promise<void> {
+  const api = appApi();
+  if (!api) throw new Error("Jev verification requires the desktop app.");
+  await api.VerifyJev(apiKey, useOpenRouter);
 }
 
 export async function cancelChat(streamID: string): Promise<boolean> {

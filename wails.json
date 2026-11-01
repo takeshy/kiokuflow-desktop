@@ -1,10 +1,10 @@
 {
   "info": {
     "companyName": "takeshy",
-    "productName": "GemiHub Desktop",
+    "productName": "kiokuflow-desktop",
     "productIdentifier": "takeshy.gemihub-desktop",
     "description": "Local-first AI workspace",
-    "version": "1.10.2",
+    "version": "1.10.3",
     "copyright": "Copyright takeshy",
     "comments": "GemiHub-compatible local desktop workspace"
   },

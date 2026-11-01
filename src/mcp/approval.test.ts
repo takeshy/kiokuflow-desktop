@@ -24,7 +24,7 @@ test("MCP approval supports once, remember, revoke, deny and changed connection"
   });
   const server = { id: "demo", name: "Demo", transport: "http", url: "https://example.com/mcp", enabled: true, verified: true, toolHints: ["read"] } as MCPServerConfig;
   try {
-    saveChatSettings({ ...defaultChatSettings, mcpServers: [server] });
+    await saveChatSettings({ ...defaultChatSettings, mcpServers: [server] });
     await requireMcpApproval(server, "read", {});
     await requireMcpApproval(server, "read", {});
     assertEquals(prompts, 2);
@@ -33,10 +33,10 @@ test("MCP approval supports once, remember, revoke, deny and changed connection"
     assertEquals(loadChatSettings().mcpServers[0].allowedTools, ["read"]);
     await requireMcpApproval(server, "read", {});
     assertEquals(prompts, 3);
-    const revoked = loadChatSettings(); revoked.mcpServers[0].allowedTools = []; saveChatSettings(revoked);
+    const revoked = loadChatSettings(); revoked.mcpServers[0].allowedTools = []; await saveChatSettings(revoked);
     choice = "deny";
     await assertRejects(() => requireMcpApproval(server, "read", {}), Error, "denied");
-    const automatic = loadChatSettings(); automatic.mcpServers[0].autoApprove = true; saveChatSettings(automatic);
+    const automatic = loadChatSettings(); automatic.mcpServers[0].autoApprove = true; await saveChatSettings(automatic);
     await requireMcpApproval(server, "write", {});
     assertEquals(prompts, 4);
     await assertRejects(() => requireMcpApproval({ ...server, url: "https://other.example/mcp" }, "read", {}), Error, "denied");

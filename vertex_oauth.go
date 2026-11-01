@@ -117,7 +117,7 @@ func (a *App) ConnectVertexOAuth(clientID, clientSecret string) (*VertexOAuthSta
 		}
 		callback <- callbackResult{code: request.URL.Query().Get("code"), err: request.URL.Query().Get("error")}
 		response.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = io.WriteString(response, "<!doctype html><meta charset=utf-8><title>GemiHub Desktop</title><p>Google authorization completed. You can close this window and return to GemiHub Desktop.</p>")
+		_, _ = io.WriteString(response, "<!doctype html><meta charset=utf-8><title>kiokuflow-desktop</title><p>Google authorization completed. You can close this window and return to kiokuflow-desktop.</p>")
 	})
 	go func() { _ = server.Serve(listener) }()
 	if err := a.openURL(googleOAuthAuthorizationURL + "?" + values.Encode()); err != nil {

@@ -21,7 +21,7 @@ func main() {
 	app := NewApp()
 	webviewUserDataPath := ""
 	if configDir, err := os.UserConfigDir(); err == nil {
-		webviewUserDataPath = filepath.Join(configDir, appID, "webview")
+		webviewUserDataPath = filepath.Join(configDir, appDataID, "webview")
 	}
 
 	wailsApp := application.New(application.Options{

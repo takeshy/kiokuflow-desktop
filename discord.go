@@ -19,7 +19,7 @@ import (
 const (
 	discordAPIBase    = "https://discord.com/api/v10"
 	discordGatewayURL = "wss://gateway.discord.gg/?v=10&encoding=json"
-	discordUserAgent  = "DiscordBot (GemiHub-Desktop, 1.0)"
+	discordUserAgent  = "DiscordBot (kiokuflow-desktop, 1.0)"
 )
 
 var discordSnowflakePattern = regexp.MustCompile(`^\d{17,20}$`)
@@ -510,7 +510,7 @@ func (bot *discordBot) command(conversation *discordConversation, content string
 	command := strings.ToLower(rawCommand)
 	switch command {
 	case "!help":
-		return "**GemiHub Desktop Discord commands:**\n- `!reset` — Clear conversation history\n- `!rag on` — Enable configured RAG\n- `!rag off` — Disable RAG\n- `!skill` — List workspace skills\n- `!skill <name>` — Toggle a skill\n- `!skill off` — Deactivate all skills\n- `!model` — Show the configured model\n- `!help` — Show this help", true
+		return "**kiokuflow-desktop Discord commands:**\n- `!reset` — Clear conversation history\n- `!rag on` — Enable configured RAG\n- `!rag off` — Disable RAG\n- `!skill` — List workspace skills\n- `!skill <name>` — Toggle a skill\n- `!skill off` — Deactivate all skills\n- `!model` — Show the configured model\n- `!help` — Show this help", true
 	case "!reset":
 		conversation.Messages = nil
 		conversation.CLISessionID = ""

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -32,6 +33,7 @@ type ChatAttachment struct {
 }
 
 type ChatRequest struct {
+	ConversationID           string               `json:"conversationId,omitempty"`
 	Provider                 string               `json:"provider"`
 	Endpoint                 string               `json:"endpoint"`
 	APIKey                   string               `json:"apiKey"`
@@ -804,6 +806,9 @@ func (a *App) chatOpenAI(request ChatRequest) (*ChatResult, error) {
 		if request.APIKey != "" {
 			headers["Authorization"] = "Bearer " + request.APIKey
 		}
+		for key, value := range compatibleChatHeaders(endpoint, a.GetWorkspacePath(), request.ConversationID) {
+			headers[key] = value
+		}
 		assistant := openAIMessage{Role: "assistant"}
 		var content strings.Builder
 		var reasoning strings.Builder
@@ -909,6 +914,19 @@ func (a *App) chatOpenAI(request ChatRequest) (*ChatResult, error) {
 		}
 	}
 	return nil, fmt.Errorf("tool iteration limit exceeded")
+}
+
+func compatibleChatHeaders(endpoint, workspace, conversation string) map[string]string {
+	switch endpoint {
+	case "https://openrouter.ai/api/v1/chat/completions":
+		return map[string]string{"X-Title": "kiokuflow-desktop"}
+	case "https://opencode.ai/zen/go/v1/chat/completions":
+		return map[string]string{
+			"User-Agent":         "kiokuflow-desktop/1.0",
+			"x-opencode-session": fmt.Sprintf("gemihub-%x", sha256.Sum256([]byte(workspace+":"+conversation))),
+		}
+	}
+	return nil
 }
 
 func chatCompletionsRequiresDisabledReasoning(model string) bool {

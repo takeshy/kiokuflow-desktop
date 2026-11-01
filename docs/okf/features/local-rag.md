@@ -36,3 +36,21 @@ embedding生成には設定したproviderのcredentialが必要で、GeminiやVe
 # 関連機能
 
 [Chatのコンテキストとファイル操作](/features/chat-context-file-tools.md)、[OKF知識ソース](/features/okf-knowledge.md)、[Discord bot](/features/discord-bot.md)（`!rag on`/`!rag off`）。
+
+# Jevによる一致判定
+
+任意でJevによる関連性判定を使えます。RAG設定のJev欄で全体を有効にし、
+各インデックスの **Jev relevance filtering** と **Search until a match** を設定します。
+RAG Search画面でも一時的に切り替えられます。Top Kは1〜20（初期値5）で、
+判定時には1バッチの候補数になります。一致するまで検索を有効にすると、
+最初に計算した類似度順で最大1,000候補を順に判定し、一致が見つかったバッチで停止します。
+embeddingを繰り返し生成することはありません。判定したテキストはJevへ送信され、追加のAPI利用料がかかります。
+
+直接接続のキーは[TypeSafe公式コンソール](https://console.typesafe.ai/)で発行し、
+**Verify & save** で候補のキーと接続モードを確認してから保存します。失敗時は既存設定を維持します。
+送信先は[公式API](https://docs.typesafe.ai/api/system-one)の
+`https://api.typesafe.ai/v1/systemone`に固定します。OpenRouterモードでは
+`https://openrouter.ai/api/alpha/decisions`と設定済みOpenRouterキーを使います。
+モード間でキーを自動的に切り替えません。キー未解除時は通常のvector検索を利用し、
+JevのAPIエラーは検索エラーとして表示します。本文を取得できないmediaの索引markerは
+未判定として表示・保持し、繰り返し検索を止めるための一致とは数えません。
