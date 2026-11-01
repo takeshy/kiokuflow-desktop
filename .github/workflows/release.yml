@@ -60,7 +60,7 @@ jobs:
             target: linux
             arch: arm64
             artifact: kiokuflow-desktop-linux-arm64
-          - os: macos-14
+          - os: macos-15
             target: darwin
             arch: arm64
             artifact: kiokuflow-desktop-darwin-arm64
