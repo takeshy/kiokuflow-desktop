@@ -143,6 +143,9 @@ stops, the transcript is inserted into the draft. The connection test sends a
 short silent recording; API usage may incur charges. Cloud Speech-to-Text V1
 configuration is no longer needed.
 
+The default send phrase is “以上” for Japanese and “over” for English. With
+language set to `auto`, it follows the app language. Custom phrases and an empty
+phrase remain unchanged.
 Saying the send phrase with an empty draft ends listening instead of sending. A
 recording with no speech in it is never transcribed, and the notices about
 retained recordings or errors can be closed with their × button.
@@ -219,10 +222,18 @@ API providers include OpenRouter and OpenCode Go presets. Use **Verify & fetch
 models** in AI settings, then select enabled models. Chat shows models from the
 active provider profile. Existing API profiles need to be verified once after updating.
 
-Local RAG stays on disk and supports optional per-index Jev relevance filtering
-and search until a match (up to 1,000 candidates). Direct Jev requests use the
-[official TypeSafe API](https://docs.typesafe.ai/api/system-one); create keys in the
-[official console](https://console.typesafe.ai/), or explicitly use OpenRouter.
+Local RAG stays on disk. Hybrid search (BM25 + vector, fused with RRF) is ON
+by default and can be turned off. Each index has one Reranking selector:
+**OFF** (default, including unselected/old settings), **Jev**, or **Gemini Decisions
+API** (`gemini-decision-1`). Top K limits final results; relevance scores of 0–3
+are displayed separately from retrieval scores. Search until a match checks groups
+of 40 for scores ≥2/3, up to 1,000 candidates. Scoring failures return original
+results with a warning, and unscorable media keeps its retrieval position.
+Gemini uses an unlocked native Gemini key from AI settings; Jev uses a direct key
+from the [TypeSafe console](https://console.typesafe.ai/) or explicitly selected
+OpenRouter credentials. Only the selected service receives indexed text for scoring;
+there is no provider or credential fallback. Use **Verify selected provider** to
+check the chosen connection.
 
 ### Safety model
 
@@ -330,7 +341,7 @@ Requirements:
 
 - Node.js 24 or newer
 - Go 1.26 or newer
-- Wails v3.0.0-beta.12 (`go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.12`)
+- Wails v3.1.0 (`go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0`)
 - Wails platform dependencies for your OS
 
 Install dependencies and run the web UI:

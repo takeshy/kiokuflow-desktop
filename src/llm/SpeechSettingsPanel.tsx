@@ -144,8 +144,8 @@ export function SpeechSettingsPanel(
     },
   ] as const;
   const resolvedSettings = useMemo(
-    () => resolveSpeechSettings(aiSettings, settings),
-    [aiSettings, settings],
+    () => resolveSpeechSettings(aiSettings, settings, language),
+    [aiSettings, settings, language],
   );
   const inheritedKey = useMemo(
     () =>
@@ -683,7 +683,7 @@ export function SpeechSettingsPanel(
           <label className="settings-field">
             <span>{t("speech.sendPhrase")}</span>
             <input
-              value={settings.sendPhrase}
+              value={resolvedSettings.sendPhrase}
               placeholder={t("speech.phrasePlaceholder")}
               onChange={(event) => patch({ sendPhrase: event.target.value })}
             />

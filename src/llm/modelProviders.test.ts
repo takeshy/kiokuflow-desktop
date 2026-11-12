@@ -19,7 +19,13 @@ test("Gemini model discovery keeps API keys out of URLs", async () => {
               status: 200,
               headers: {},
               body: JSON.stringify({
-                models: [{ name: "models/gemini-test" }],
+                models: [
+                  { name: "models/gemini-test" },
+                  { name: "models/gemini-embedding-2" },
+                  { name: "models/gemini-embedding-2-preview", supportedGenerationMethods: ["generateContent", "embedContent"] },
+                  { name: "models/text-embedding-004", supportedGenerationMethods: ["embedContent"] },
+                  { name: "models/embedding-001" },
+                ],
               }),
               bodyBase64: "",
             });

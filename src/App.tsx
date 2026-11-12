@@ -154,6 +154,7 @@ import {
   cliNames,
   type CLIType,
   configuredChatProviders,
+  configuredEmbeddingProviders,
   defaultRAGSetting,
   loadChatSettings,
   resolveRAGSetting,
@@ -163,6 +164,7 @@ import {
 } from "./llm/settings";
 import { type ActiveSelection, formatActiveSelection } from "./llm/selection";
 import { JevSettingsPanel } from "./llm/JevSettingsPanel";
+import { RerankingSelect } from "./llm/RerankingSelect";
 import { ModelProviderManager } from "./llm/ModelProviderManager";
 import { SpeechSettingsPanel } from "./llm/SpeechSettingsPanel";
 import { McpHttpClient, McpHttpError } from "./mcp/httpClient";
@@ -1406,6 +1408,7 @@ export default function App() {
   const selectedRAG = chatSettings.selectedRagSetting
     ? chatSettings.ragSettings[chatSettings.selectedRagSetting]
     : undefined;
+  const ragEmbeddingProviders = configuredEmbeddingProviders(chatSettings);
   useEffect(() =>
     onRAGSyncProgress((progress) => {
       if (progress.name !== chatSettings.selectedRagSetting) return;
@@ -2863,8 +2866,8 @@ export default function App() {
               );
               setSettingsOpen(true);
             }}
-            onOpenRAGSettings={() => {
-              setSettingsSection("rag");
+            onOpenRAGSettings={(section = "rag") => {
+              setSettingsSection(section);
               setSettingsOpen(true);
             }}
             onOpenFile={(file) => {
@@ -5236,13 +5239,7 @@ export default function App() {
                               index++;
                               name = `RAG ${index}`;
                             }
-                            const embeddingProvider = configuredChatProviders(
-                              chatSettings,
-                            )
-                              .find((provider) =>
-                                provider === "gemini" ||
-                                provider === "vertex" || provider === "openai"
-                              ) as "gemini" | "vertex" | "openai" | undefined;
+                            const embeddingProvider = ragEmbeddingProviders[0];
                             setChatSettings((current) => ({
                               ...current,
                               selectedRagSetting: name,
@@ -5398,12 +5395,7 @@ export default function App() {
                               <select
                                 className="settings-select"
                                 value={selectedRAG.embeddingProvider}
-                                disabled={!configuredChatProviders(chatSettings)
-                                  .some((provider) =>
-                                    provider === "gemini" ||
-                                    provider === "vertex" ||
-                                    provider === "openai"
-                                  )}
+                                disabled={!ragEmbeddingProviders.length}
                                 onChange={(event) => {
                                   const embeddingProvider = event.target
                                     .value as "gemini" | "vertex" | "openai";
@@ -5429,31 +5421,20 @@ export default function App() {
                                   }));
                                 }}
                               >
-                                {!configuredChatProviders(chatSettings).some((
-                                  provider,
-                                ) =>
-                                  provider === "gemini" ||
-                                  provider === "vertex" || provider === "openai"
-                                ) && (
+                                {!ragEmbeddingProviders.length && (
                                   <option value="">
                                     No embedding-capable AI provider configured
                                   </option>
                                 )}
-                                {configuredChatProviders(chatSettings)
-                                  .filter((provider) =>
-                                    provider === "gemini" ||
-                                    provider === "vertex" ||
-                                    provider === "openai"
-                                  )
-                                  .map((provider) => (
-                                    <option key={provider} value={provider}>
-                                      {provider === "gemini"
-                                        ? "Gemini"
-                                        : provider === "vertex"
-                                        ? "Vertex AI"
-                                        : "OpenAI / Compatible"}
-                                    </option>
-                                  ))}
+                                {ragEmbeddingProviders.map((provider) => (
+                                  <option key={provider} value={provider}>
+                                    {provider === "gemini"
+                                      ? "Gemini"
+                                      : provider === "vertex"
+                                      ? "Vertex AI"
+                                      : "OpenAI / Compatible"}
+                                  </option>
+                                ))}
                               </select>
                               <small className="settings-hint">
                                 Credentials and endpoint come from AI settings.
@@ -5824,14 +5805,11 @@ export default function App() {
                             </label>
                           </div>
                           <label className="settings-check">
-                            <input type="checkbox" checked={selectedRAG.jevRagFilterEnabled} onChange={event => setChatSettings(current => ({ ...current, ragSettings: { ...current.ragSettings, [current.selectedRagSetting!]: { ...current.ragSettings[current.selectedRagSetting!], jevRagFilterEnabled: event.target.checked } } }))} />
-                            Jev relevance filtering for this index
+                            <input type="checkbox" checked={selectedRAG.hybridSearch !== false} onChange={event => setChatSettings(current => ({ ...current, ragSettings: { ...current.ragSettings, [current.selectedRagSetting!]: { ...current.ragSettings[current.selectedRagSetting!], hybridSearch: event.target.checked } } }))} />Hybrid search (BM25 + vector)
                           </label>
-                          <label className="settings-check">
-                            <input type="checkbox" checked={selectedRAG.searchUntilMatch ?? false} disabled={!selectedRAG.jevRagFilterEnabled} onChange={event => setChatSettings(current => ({ ...current, ragSettings: { ...current.ragSettings, [current.selectedRagSetting!]: { ...current.ragSettings[current.selectedRagSetting!], searchUntilMatch: event.target.checked } } }))} />
-                            Search until a match (up to 1,000 candidates)
-                          </label>
-                          <small className="settings-hint">Jev must also be enabled above. Top K is the candidate batch size when filtering.</small>
+                          <RerankingSelect settings={chatSettings} rag={selectedRAG} ragName={chatSettings.selectedRagSetting ?? undefined} value={selectedRAG.rerankProvider} onOpenSettings={setSettingsSection} onChange={provider => setChatSettings(current => ({ ...current, ragSettings: { ...current.ragSettings, [current.selectedRagSetting!]: { ...current.ragSettings[current.selectedRagSetting!], rerankProvider: provider } } }))} />
+                          <label className="settings-check"><input type="checkbox" checked={selectedRAG.searchUntilMatch ?? false} disabled={!selectedRAG.rerankProvider || selectedRAG.rerankProvider === "off"} onChange={event => setChatSettings(current => ({ ...current, ragSettings: { ...current.ragSettings, [current.selectedRagSetting!]: { ...current.ragSettings[current.selectedRagSetting!], searchUntilMatch: event.target.checked } } }))} />Search until an answer is found (relevance ≥ 2/3, up to 1,000 candidates)</label>
+                          <small className="settings-hint">Score successive groups of 40. Unscored media is not treated as a low relevance score.</small>
                           <label className="settings-field">
                             <span>Retrieved chunks: {selectedRAG.topK}</span>
                             <input

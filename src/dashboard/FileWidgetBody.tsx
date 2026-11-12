@@ -488,7 +488,7 @@ export function FileWidgetBody({
   onAskMemoAI: (draft: string) => void;
   active: boolean;
 }) {
-  const { t: tr } = useI18n();
+  const { t: tr, language } = useI18n();
   const storedFile = isFileRef(widget.config.file) ? widget.config.file : null;
   const filePath = storedFile?.path || "";
   const effectiveFilePath = filePath;
@@ -617,8 +617,9 @@ export function FileWidgetBody({
     content,
     ...(kind === "markdown" ? { mode: markdownMode } : {}),
   });
-  const speechSettings = useMemo(() => resolveSpeechSettings(chatSettings), [
+  const speechSettings = useMemo(() => resolveSpeechSettings(chatSettings, chatSettings.speech, language), [
     chatSettings,
+    language,
   ]);
   const speech = useChatSpeech({
     input: speechInput,

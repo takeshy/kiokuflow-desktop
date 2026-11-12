@@ -1,10 +1,31 @@
 import { test } from "vitest";
 import { assertEquals, assertStringIncludes } from "../testing/assert";
 import {
+  chatRagWarnings,
   formatRagSearchToolResult,
   mergeRagSources,
   ragSearchSystemPrompt,
 } from "./chatRagTool.ts";
+
+test("Chat hides media scoring notices while retaining actual reranking failures", () => {
+  const media = "5 candidate(s) could not be scored; their original search positions are preserved.";
+  const stopped = "Stopped search-until-found: unscored media is not evidence of low relevance.";
+  const failure = "gemini reranking failed; returning original search results: HTTP 503";
+  assertEquals(chatRagWarnings([media, stopped]), []);
+  assertEquals(chatRagWarnings([media, failure, stopped]), [failure]);
+  const result = {
+    filePath: "scan.pdf", text: "[pdf: scan.pdf]", chunkIndex: 0, score: 0.8,
+    warnings: [media, stopped], jevUnchecked: true,
+  };
+  const toolResult = JSON.parse(formatRagSearchToolResult("query", [result], 1));
+  assertEquals(toolResult.results[0].warnings, undefined);
+  assertEquals(toolResult.results[0].jevUnchecked, true);
+  assertEquals(mergeRagSources([], [result]), [{ path: "scan.pdf", score: 0.8 }]);
+  const failed = JSON.parse(formatRagSearchToolResult("query", [{ ...result, warnings: [media, failure] }], 1));
+  assertEquals(failed.results[0].warnings, [failure]);
+  // Filtering Chat must not remove the full diagnostic list from RAG results.
+  assertEquals(result.warnings, [media, stopped]);
+});
 
 test("dynamic RAG results include chunk text and remaining budget", () => {
   const value = formatRagSearchToolResult("focused", [{

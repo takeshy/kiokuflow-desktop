@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Check, Loader2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { fetchProviderModels } from "./modelProviders";
-import { compatibleProvider, compatibleProviderPresets } from "./providerPresets";
+import { compatibleProvider, compatibleProviderPresets, isEmbeddingModel } from "./providerPresets";
 import {
   type ChatSettings,
   type LocalLLMFramework,
@@ -23,6 +23,11 @@ export function ModelProviderManager(
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const synced = syncActiveModelProfile(settings);
+  const chatProfiles = synced.modelProfiles.map(profile => ({
+    ...profile,
+    availableModels: profile.availableModels.filter(model => !isEmbeddingModel(model)),
+    enabledModels: profile.enabledModels.filter(model => !isEmbeddingModel(model)),
+  }));
   const latest = useRef(synced);
   latest.current = synced;
   const patch = (id: string, changes: Partial<ModelProviderProfile>) => {
@@ -97,7 +102,7 @@ export function ModelProviderManager(
         <div className="settings-empty">No API or local models configured.</div>
       )}
       <div className="model-provider-cards">
-        {synced.modelProfiles.map((profile) => (
+        {chatProfiles.map((profile) => (
           <article
             key={profile.id}
             className={`model-provider-entry ${
@@ -339,6 +344,9 @@ export function ModelProviderManager(
                       patch(profile.id, { enabled: event.target.checked })}
                   />
                 </label>
+                {(profile.provider === "gemini" || profile.provider === "openai") && (
+                  <small>Configure embedding models in RAG settings using this connection. Chat model selection does not affect RAG embeddings.</small>
+                )}
                 <div className="model-provider-actions">
                   <button
                     type="button"
@@ -360,7 +368,7 @@ export function ModelProviderManager(
                 {!profile.local && !profile.modelsVerified && <small>Verify this connection before selecting chat models.</small>}
                 {!!profile.availableModels.length && (
                   <fieldset className="model-checklist">
-                    <legend>Enabled models</legend>
+                    <legend>Enabled Chat models</legend>
                     {profile.availableModels.map((model) => (
                       <label key={model}>
                         <input

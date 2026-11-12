@@ -106,6 +106,7 @@ Transcribeは次の2つの接続方法に対応しています。
 接続テストは短い無音データを送信します。API利用料金が発生する場合があります。
 Cloud Speech-to-Text V1の設定は不要です。
 
+日本語の送信の合図は既定で「以上」、英語では「over」です。言語が`auto`の場合はアプリの表示言語に合わせます。独自の合図や空欄の設定はそのまま使えます。
 下書きが空のまま送信の合図だけを言うと、送信せずに聞き取りを終了します。
 発話を検出できなかった録音は文字起こしせず、APIへも送りません。
 保持中の録音の案内やエラー表示は、右端の×でその場で閉じられます。
@@ -261,8 +262,8 @@ kiokuflow-desktop note.md research.pdf book.epub
 必要な環境：
 
 - Node.js 24 以上
-- Go 1.25 以上
-- Wails v3.0.0-beta.12（`go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.12`）
+- Go 1.26 以上
+- Wails v3.1.0（`go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0`）
 - 利用する OS 向けの Wails platform dependencies
 
 依存関係をインストールし、Web UI を起動します。
@@ -299,6 +300,16 @@ wails3 task windows:msix ARCH=arm64
 Partner Centerへ提出する前に、`build/windows/msix/AppxManifest.xml` の
 `Identity`名とPublisherを、予約したStore製品に割り当てられた正確な値へ
 置き換えてください。
+
+## RAG検索
+
+Local RAGのhybrid検索（BM25＋ベクトル検索・RRF統合）は標準ONで、明示的にOFFにできます。
+リランキングはRAGごとに **OFF（標準・未選択時）／Jev／Gemini Decisions API** を選択します。
+GeminiはAI設定のnative Geminiキー、Jevは直接キーまたは明示的に選択したOpenRouterキーを使います。
+点数は0〜3、Top Kは最終件数です。「一致するまで検索」は40候補ずつ最大1,000候補を調べ、
+2/3点以上で停止します。採点失敗時は警告付きで元の結果を返し、採点できないメディアの順位を保持します。
+選択したサービスだけに索引本文を送信します。**Verify selected provider** で接続を確認できます。
+
 
 ## 謝辞
 

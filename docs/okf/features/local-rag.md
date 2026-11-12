@@ -23,6 +23,8 @@ Local RAGは、ローカルファイル群を意味検索できるようにす�
 
 embedding生成には設定したproviderのcredentialが必要で、GeminiやVertex AIなど外部embedding APIを使う場合、対象テキストがそのサービスへ送信されます。RAGは原文そのものを変更しません。少数ファイルを確実に渡す用途は `@file`、curatedな定義や手順には[OKF](/features/okf-knowledge.md)が適しています。
 
+Gemini、OpenAI、OpenAI互換APIの接続をAI設定に登録すると、Chat用モデルのチェックに関係なくRAGのembedding providerとして選べます。Vertex AIもChat用モデルの選択に依存しません。embedding modelはRAG設定ごとに指定します。AI設定のモデル一覧はChat用で、embedding modelのチェックは不要です。OpenAI互換APIはembedding対応の接続先を使ってください。保存したAPIキーがロック中の場合は、`Settings > Encryption`からUnlockしてからSyncや検索を実行します。
+
 # 既定値と処理の単位
 
 既定はchunk sizeが500文字、overlapが100文字、検索時のtop-kは5件、score threshold 0.3、embedding providerは既定でGeminiです。embeddingは32chunkずつまとめて要求され、backendの1回の処理単位は変更file最大50件です。RAG Search画面の **Sync Index** は持ち越しがなくなるまでこの処理を自動反復します。ファイル内容はhashで比較され、変更がなければ再embeddingをskipします。embedding providerやmodel、chunk設定を変更すると全体が再構築されます。
@@ -37,20 +39,30 @@ embedding生成には設定したproviderのcredentialが必要で、GeminiやVe
 
 [Chatのコンテキストとファイル操作](/features/chat-context-file-tools.md)、[OKF知識ソース](/features/okf-knowledge.md)、[Discord bot](/features/discord-bot.md)（`!rag on`/`!rag off`）。
 
-# Jevによる一致判定
+# Hybrid検索とリランキング
 
-任意でJevによる関連性判定を使えます。RAG設定のJev欄で全体を有効にし、
-各インデックスの **Jev relevance filtering** と **Search until a match** を設定します。
-RAG Search画面でも一時的に切り替えられます。Top Kは1〜20（初期値5）で、
-判定時には1バッチの候補数になります。一致するまで検索を有効にすると、
-最初に計算した類似度順で最大1,000候補を順に判定し、一致が見つかったバッチで停止します。
-embeddingを繰り返し生成することはありません。判定したテキストはJevへ送信され、追加のAPI利用料がかかります。
+Hybrid検索は標準ONで、BM25によるキーワード検索とベクトル検索をRRFで統合します。
+ベクトル検索の候補外にある `E02` などの識別子や日本語も既存の索引本文から検索します。
+Hybrid searchをOFFにするとベクトル検索を使います。検索設定の変更だけでは再embeddingは不要です。
 
-直接接続のキーは[TypeSafe公式コンソール](https://console.typesafe.ai/)で発行し、
-**Verify & save** で候補のキーと接続モードを確認してから保存します。失敗時は既存設定を維持します。
-送信先は[公式API](https://docs.typesafe.ai/api/system-one)の
-`https://api.typesafe.ai/v1/systemone`に固定します。OpenRouterモードでは
-`https://openrouter.ai/api/alpha/decisions`と設定済みOpenRouterキーを使います。
-モード間でキーを自動的に切り替えません。キー未解除時は通常のvector検索を利用し、
-JevのAPIエラーは検索エラーとして表示します。本文を取得できないmediaの索引markerは
-未判定として表示・保持し、繰り返し検索を止めるための一致とは数えません。
+リランキングはRAGごとに **OFF / Jev / Gemini Decisions API** の1つを選びます。
+未選択・旧設定はOFFで、キーの登録だけではONになりません。RAG Search画面ではその検索だけ
+一時的に変更できます。GeminiはAI設定のnative Gemini接続の解除済みキーを使い、
+`gemini-decision-1` で採点します。JevはJev欄の直接キー、または明示的に選んだOpenRouterキーを使います。
+選択したサービスだけにクエリと候補の索引本文を送信し、追加のAPI利用料がかかります。
+
+直接Jevのキーは[TypeSafe公式コンソール](https://console.typesafe.ai/)で発行します。
+送信先は `https://api.typesafe.ai/v1/systemone`（`jev-latest`）、OpenRouterは
+`https://openrouter.ai/api/alpha/decisions`（`~typesafe/jev-latest`）、Geminiは
+`https://generativelanguage.googleapis.com/v1beta/decisions` です。プロバイダー間でキーを自動転用しません。
+**Verify selected provider** で選択中の接続を確認できます。
+
+点数は0〜3で、検索スコアとは別に表示します。Top K（1〜20、初期値5）は最終結果の件数です。
+通常は最大40候補を採点して並べ替えます。**Search until a match** は40候補ずつ最大1,000候補を調べ、
+2/3点以上が見つかった最初のバッチの一致結果を返します。embeddingと検索は1回だけ実行します。
+各バッチの採点は再試行込みで20秒までです。上限まで一致がなければ警告を表示します。
+
+採点失敗や選択したキーの未設定・未解除時は、警告付きで元の検索結果を返します。
+採点するのは索引にある本文（PDFの抽出済みテキストを含む）です。画像・音声・動画や本文のないPDFは
+未判定として元の順位を保護し、binary本体を採点APIへ送信しません。
+継続検索では未判定を低得点とみなさず、警告付きで停止して元の検索結果を返します。

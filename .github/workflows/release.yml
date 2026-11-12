@@ -124,9 +124,9 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.target }}" = "linux" ]; then
-            go install -tags gtk3 github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.12
+            go install -tags gtk3 github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
           else
-            go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.12
+            go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
           fi
           wails3 task ${{ matrix.target }}:build ARCH=${{ matrix.arch }}
           if [ "${{ matrix.target }}" = "windows" ]; then

@@ -95,7 +95,12 @@ export interface WorkspaceDirectoryMoveResult {
   linkCreated: boolean;
 }
 
+export type RAGRerankProvider = "off" | "gemini" | "jev";
+
 export interface RAGSetting {
+  hybridSearch?: boolean;
+  rerankProvider?: RAGRerankProvider;
+  geminiApiKey?: string;
   embeddingSource: "ai" | "custom";
   embeddingProvider: "gemini" | "vertex" | "openai";
   embeddingBaseUrl: string;
@@ -165,6 +170,10 @@ export interface RAGSyncProgress {
 }
 
 export interface RAGSearchResult {
+  rerankScore?: number;
+  retrievalSource?: "vector" | "bm25" | "both";
+  rerankSkippedReason?: string;
+  warnings?: string[];
   jevUnchecked?: boolean;
   filePath: string;
   text: string;
@@ -461,6 +470,7 @@ export interface MCPStdioStartRequest {
 
 interface WailsAppApi {
   VerifyJev: (apiKey: string, useOpenRouter: boolean) => Promise<void>;
+  VerifyRAGReranker: (provider: string, apiKey: string, useOpenRouter: boolean) => Promise<void>;
   GetWorkspaceState: () => Promise<WorkspaceState>;
   SetWorkspaceDirectory: (path: string) => Promise<WorkspaceState>;
   SelectWorkspaceDirectory: () => Promise<string>;
@@ -761,6 +771,10 @@ export function onRAGSyncProgress(
     "rag:sync-progress",
     callback as (event: never) => void,
   ) ?? (() => undefined);
+}
+
+export function onRAGSearchWarning(callback: (event: { name: string; warnings: string[] }) => void): () => void {
+  return window.runtime?.EventsOn?.("rag:search-warning", callback as (event: never) => void) ?? (() => undefined);
 }
 
 export async function resolveChatTool(
@@ -1337,6 +1351,12 @@ export async function verifyJev(apiKey: string, useOpenRouter: boolean): Promise
   const api = appApi();
   if (!api) throw new Error("Jev verification requires the desktop app.");
   await api.VerifyJev(apiKey, useOpenRouter);
+}
+
+export async function verifyRAGReranker(provider: RAGRerankProvider, apiKey: string, useOpenRouter = false): Promise<void> {
+  const api = appApi();
+  if (!api) throw new Error("Connection verification requires the desktop app.");
+  await api.VerifyRAGReranker(provider, apiKey, useOpenRouter);
 }
 
 export async function cancelChat(streamID: string): Promise<boolean> {

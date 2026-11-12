@@ -3,6 +3,8 @@ import { assertEquals } from "../testing/assert";
 import {
   chatModelChoices,
   configuredModelOptions,
+  configuredChatProviders,
+  configuredEmbeddingProviders,
   defaultChatSettings,
   defaultRAGSetting,
   defaultSpeechSettings,
@@ -68,7 +70,7 @@ test("speech settings keep browser as default and load compatible endpoints with
     apiKey: "",
     model: "whisper",
     language: "auto",
-    sendPhrase: "over, オーバー",
+    sendPhrase: "over",
     endpointType: "custom",
     shortcut: "",
     silenceSeconds: 3,
@@ -491,4 +493,101 @@ test("old Cloud STT settings migrate to Transcribe without reusing Cloud STT cre
   assertEquals(migrated.language, "ja-JP");
   assertEquals(migrated.shortcut, "Ctrl+Space");
   assertEquals(migrated.silenceSeconds, 5);
+});
+
+test("reranking is OFF unless selected and Gemini resolves only native Gemini keys", () => {
+  const gemini = { ...newModelProfile("gemini"), id: "gemini", apiKey: "gemini-only", enabled: true };
+  const jevSettings = { ...defaultChatSettings, jevApiKey: "jev-only", modelProfiles: [gemini] };
+  expect(resolveRAGSetting(jevSettings, defaultRAGSetting).rerankProvider).toBe("off");
+  expect(resolveRAGSetting(jevSettings, { ...defaultRAGSetting, rerankProvider: "gemini" }).geminiApiKey).toBe("gemini-only");
+  const compatible = { ...gemini, openAICompatible: true };
+  expect(resolveRAGSetting({ ...jevSettings, modelProfiles: [compatible] }, { ...defaultRAGSetting, rerankProvider: "gemini", embeddingProvider: "openai" }).geminiApiKey).toBe("");
+  expect(loadChatSettings({ getItem: () => JSON.stringify({ ragSettings: { old: { topK: 7, jevRagFilterEnabled: true } } }) }).ragSettings.old.rerankProvider).toBe("off");
+  expect(resolveRAGSetting(jevSettings, { ...defaultRAGSetting, hybridSearch: false }).hybridSearch).toBe(false);
+});
+
+test("Gemini embedding is available without enabling or verifying any Chat models", () => {
+  const profile = { ...newModelProfile("gemini"), id: "gemini", apiKey: "gemini-key", enabled: true, modelsVerified: false, availableModels: [], enabledModels: [] };
+  const settings = { ...defaultChatSettings, modelProfiles: [profile] };
+  expect(configuredChatProviders(settings)).not.toContain("gemini");
+  expect(configuredEmbeddingProviders(settings)).toContain("gemini");
+  expect(resolveRAGSetting(settings, defaultRAGSetting).embeddingApiKey).toBe("gemini-key");
+  expect(configuredEmbeddingProviders({ ...settings, modelProfiles: [{ ...profile, enabled: false }] })).not.toContain("gemini");
+  expect(configuredEmbeddingProviders({ ...settings, modelProfiles: [{ ...profile, apiKey: "" }] })).not.toContain("gemini");
+  expect(configuredEmbeddingProviders({ ...settings, modelProfiles: [{ ...profile, openAICompatible: true }] })).not.toContain("gemini");
+});
+
+test("saved locked Gemini connections remain selectable for RAG without Chat models", () => {
+  const profile = { ...newModelProfile("gemini"), id: "gemini", apiKey: "", enabled: true };
+  const settings = {
+    ...defaultChatSettings,
+    modelProfiles: [profile],
+    encryptedCredentials: { '["modelProfiles","gemini","apiKey"]': "saved-key" },
+  };
+  expect(configuredEmbeddingProviders(settings)).toContain("gemini");
+  expect(resolveRAGSetting(settings, defaultRAGSetting).embeddingApiKey).toBe("");
+});
+
+test("legacy Gemini embedding checkboxes are removed without enabling any Chat models", () => {
+  const profile = {
+    ...newModelProfile("gemini"), id: "gemini", apiKey: "key", modelsVerified: true,
+    model: "gemini-embedding-2-preview",
+    availableModels: ["gemini-embedding-2-preview", "gemini-chat", "text-embedding-004"],
+    enabledModels: ["gemini-embedding-2-preview", "text-embedding-004"],
+  };
+  const settings = loadChatSettings({ getItem: () => JSON.stringify({
+    provider: "gemini", model: profile.model, selectedModelProfileId: profile.id, apiKey: "key", modelProfiles: [profile],
+  }) });
+  expect(settings.modelProfiles[0].availableModels).toEqual(["gemini-chat"]);
+  expect(settings.modelProfiles[0].enabledModels).toEqual([]);
+  expect(settings.modelProfiles[0].model).toBe("");
+  expect(settings.model).toBe("");
+  expect(configuredModelOptions({ ...defaultChatSettings, modelProfiles: [profile] })).toEqual([]);
+  expect(configuredEmbeddingProviders(settings)).toContain("gemini");
+  const legacy = loadChatSettings({ getItem: () => JSON.stringify({ provider: "gemini", model: "gemini-embedding-2-preview", apiKey: "key" }) });
+  expect(legacy.modelProfiles[0].enabledModels).toEqual([]);
+  expect(legacy.model).toBe("");
+  expect(configuredEmbeddingProviders(legacy)).toContain("gemini");
+});
+
+test("OpenAI and compatible embedding connections do not require checked Chat models", () => {
+  for (const [local, compatible, endpoint] of [
+    [false, false, "https://api.openai.com/v1"],
+    [false, true, "https://embedding.example/v1"],
+    [true, true, "http://127.0.0.1:11434/v1"],
+  ] as const) {
+    const profile = { ...newModelProfile("openai", local, compatible), id: "embedding", apiKey: "embedding-key", endpoint };
+    const settings = { ...defaultChatSettings, provider: "cli" as const, modelProfiles: [profile] };
+    const rag = { ...defaultRAGSetting, embeddingProvider: "openai" as const };
+    expect(configuredChatProviders(settings)).not.toContain("openai");
+    expect(configuredEmbeddingProviders(settings)).toContain("openai");
+    expect(resolveRAGSetting(settings, rag)).toMatchObject({ embeddingApiKey: "embedding-key", embeddingBaseUrl: endpoint });
+    expect(configuredEmbeddingProviders({ ...settings, modelProfiles: [{ ...profile, enabled: false }] })).not.toContain("openai");
+    const locked = { ...settings, modelProfiles: [{ ...profile, apiKey: "" }], encryptedCredentials: { '["modelProfiles","embedding","apiKey"]': "saved-key" } };
+    expect(configuredEmbeddingProviders(locked)).toContain("openai");
+    expect(resolveRAGSetting(locked, rag).embeddingApiKey).toBe("");
+  }
+});
+
+test("Vertex AI embedding selection does not depend on a Chat model", () => {
+  const settings = { ...defaultChatSettings, provider: "vertex" as const, model: "", vertexProjectId: "project", vertexOAuthClientId: "client" };
+  expect(configuredEmbeddingProviders(settings)).toContain("vertex");
+  expect(resolveRAGSetting(settings, { ...defaultRAGSetting, embeddingProvider: "vertex" }).vertexProjectId).toBe("project");
+});
+
+test("saved OpenAI embedding model checkboxes are removed without enabling Chat", () => {
+  const profile = {
+    ...newModelProfile(), id: "openai", apiKey: "key", modelsVerified: true,
+    model: "text-embedding-3-small",
+    availableModels: ["text-embedding-3-small", "gpt-6.1-sol", "openai/text-embedding-3-large"],
+    enabledModels: ["text-embedding-3-small", "openai/text-embedding-3-large"],
+  };
+  const settings = loadChatSettings({ getItem: () => JSON.stringify({
+    provider: "openai", model: profile.model, selectedModelProfileId: profile.id, apiKey: "key", modelProfiles: [profile],
+  }) });
+  expect(settings.modelProfiles[0].availableModels).toEqual(["gpt-6.1-sol"]);
+  expect(settings.modelProfiles[0].enabledModels).toEqual([]);
+  expect(settings.model).toBe("");
+  expect(configuredModelOptions({ ...defaultChatSettings, modelProfiles: [profile] })).toEqual([]);
+  expect(configuredEmbeddingProviders(settings)).toContain("openai");
 });

@@ -59,6 +59,9 @@ type RAGSetting struct {
 	JevAPIKey            string   `json:"jevApiKey"`
 	JevUseOpenRouter     bool     `json:"jevUseOpenRouter"`
 	SearchUntilMatch     bool     `json:"searchUntilMatch"`
+	HybridSearch         *bool    `json:"hybridSearch,omitempty"`
+	RerankProvider       string   `json:"rerankProvider,omitempty"`
+	GeminiAPIKey         string   `json:"geminiApiKey,omitempty"`
 }
 
 type RAGSyncRequest struct {
@@ -125,13 +128,17 @@ func (a *App) emitRAGSyncProgress(progress RAGSyncProgress) {
 }
 
 type RAGSearchResult struct {
-	JevUnchecked bool    `json:"jevUnchecked,omitempty"`
-	FilePath     string  `json:"filePath"`
-	Text         string  `json:"text"`
-	Score        float64 `json:"score"`
-	ChunkIndex   int     `json:"chunkIndex"`
-	ContentType  string  `json:"contentType,omitempty"`
-	PageLabel    string  `json:"pageLabel,omitempty"`
+	JevUnchecked        bool     `json:"jevUnchecked,omitempty"`
+	FilePath            string   `json:"filePath"`
+	Text                string   `json:"text"`
+	Score               float64  `json:"score"`
+	ChunkIndex          int      `json:"chunkIndex"`
+	ContentType         string   `json:"contentType,omitempty"`
+	PageLabel           string   `json:"pageLabel,omitempty"`
+	RerankScore         *float64 `json:"rerankScore,omitempty"`
+	RetrievalSource     string   `json:"retrievalSource,omitempty"`
+	RerankSkippedReason string   `json:"rerankSkippedReason,omitempty"`
+	Warnings            []string `json:"warnings,omitempty"`
 }
 
 type RAGStatus struct {
@@ -441,10 +448,11 @@ func (a *App) SearchRAG(request RAGSearchRequest) ([]RAGSearchResult, error) {
 	} else if strings.TrimSpace(setting.EmbeddingAPIKey) == "" {
 		return nil, fmt.Errorf("embedding API key is required")
 	}
-	index, vectors, err := a.loadRAG(request.Name)
-	if err != nil || index == nil || index.Dimension == 0 || len(index.Meta) == 0 {
+	cached, err := a.loadRAGForSearch(request.Name)
+	if err != nil || cached == nil || cached.index.Dimension == 0 || len(cached.index.Meta) == 0 {
 		return []RAGSearchResult{}, err
 	}
+	index := cached.index
 	setting.EmbeddingModel = index.EmbeddingModel
 	embeddings, err := generateRAGEmbeddings([]string{request.Query}, setting, index.Dimension)
 	if err != nil {
@@ -453,27 +461,35 @@ func (a *App) SearchRAG(request RAGSearchRequest) ([]RAGSearchResult, error) {
 	if len(embeddings) == 0 || len(embeddings[0]) != index.Dimension {
 		return nil, fmt.Errorf("query embedding dimension does not match the index")
 	}
-	extensions := make(map[string]bool)
-	for _, extension := range setting.SearchFileExtensions {
-		extensions[strings.ToLower(strings.TrimPrefix(extension, "."))] = true
+	cached.filterExtensions(setting.SearchFileExtensions)
+	filtered, filteredVectors := cached.filtered, cached.filteredVectors
+	limit := setting.TopK
+	if setting.RerankProvider != "" && setting.RerankProvider != "off" {
+		limit = max(40, limit)
 	}
-	results := make([]RAGSearchResult, 0, len(index.Meta))
-	for i, meta := range index.Meta {
-		if len(extensions) > 0 && !extensions[strings.ToLower(strings.TrimPrefix(filepath.Ext(meta.FilePath), "."))] {
-			continue
-		}
-		start := i * index.Dimension
-		end := start + index.Dimension
-		if end > len(vectors) {
-			break
-		}
-		score := cosineRAGSimilarity(embeddings[0], vectors[start:end])
-		if score > setting.ScoreThreshold {
-			results = append(results, RAGSearchResult{FilePath: meta.FilePath, Text: meta.Text, Score: score, ChunkIndex: meta.ChunkIndex, ContentType: meta.ContentType, PageLabel: meta.PageLabel})
+	if setting.SearchUntilMatch && setting.RerankProvider != "" && setting.RerankProvider != "off" {
+		limit = 1000
+	}
+	vectorLimit := limit
+	if setting.HybridSearch == nil || *setting.HybridSearch {
+		vectorLimit = max(30, limit)
+	}
+	vector := vectorRanks(embeddings[0], filtered, filteredVectors, vectorLimit, setting.ScoreThreshold)
+	var results []RAGSearchResult
+	if setting.HybridSearch == nil || *setting.HybridSearch {
+		lexical := cached.keywordSearch(request.Query, max(30, limit), setting.ExternalIndexPath == "" && len(setting.SourceRAGSettings) == 0)
+		results = chunkResults(filtered, fuseRanks(vector, lexical, limit, 60))
+	} else {
+		results = chunkResults(filtered, vector)
+	}
+	results, warnings, err := rerankRAGCandidates(request.Query, results, setting)
+	if len(warnings) > 0 {
+		a.emitEvent("rag:search-warning", map[string]any{"name": request.Name, "warnings": warnings})
+		for i := range results {
+			results[i].Warnings = warnings
 		}
 	}
-	sort.SliceStable(results, func(i, j int) bool { return results[i].Score > results[j].Score })
-	return judgeRAGCandidates(request.Query, results, setting)
+	return results, err
 }
 
 // Score once, then judge successive candidate batches without regenerating the

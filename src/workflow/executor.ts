@@ -781,6 +781,7 @@ async function executeNode(
   node: WorkflowNode,
   variables: WorkflowVariables,
   services: WorkflowExecutionServices,
+  log: (entry: WorkflowLog) => void,
 ): Promise<
   {
     output?: unknown;
@@ -1354,6 +1355,15 @@ async function executeNode(
           prompt,
           resolveRAGSetting(settings, rag),
         );
+        for (const warning of new Set(matches.flatMap(match => match.warnings ?? []))) {
+          log({
+            nodeId: node.id,
+            nodeType: node.type,
+            message: `RAG warning (${ragName}): ${warning}`,
+            timestamp: new Date().toISOString(),
+            status: "info",
+          });
+        }
         commandPrompt += `\n\nRetrieved context:\n${
           matches.map((match) => `[${match.filePath}]\n${match.text}`).join(
             "\n\n",
@@ -2217,7 +2227,7 @@ export async function executeWorkflow(
         variablesSnapshot,
       });
       try {
-        const result = await executeNode(node, variables, services);
+        const result = await executeNode(node, variables, services, log);
         log({
           nodeId: node.id,
           nodeType: node.type,

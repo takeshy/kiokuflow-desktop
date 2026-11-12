@@ -283,7 +283,7 @@ test("speech commands send only on final trailing over and preserve the draft", 
     text: "下書き こんにちは over",
     send: false,
   });
-  assertEquals(speechDraft("下書き", "こんにちは オーバー。", true), {
+  assertEquals(speechDraft("下書き", "こんにちは オーバー。", true, "over, オーバー"), {
     text: "下書き こんにちは",
     send: true,
   });
@@ -393,7 +393,7 @@ test("Transcribe sends WAV inline data to fixed Gemini and Vertex models with is
         candidates: [
           {
             content: {
-              parts: [{ text: "こんにちは。" }, { text: "オーバー。" }],
+              parts: [{ text: "こんにちは。" }, { text: "以上。" }],
             },
             finishReason: "STOP",
           },
@@ -401,7 +401,7 @@ test("Transcribe sends WAV inline data to fixed Gemini and Vertex models with is
         ],
       });
     }, new AbortController().signal);
-    assertEquals(speechDraft("", text, true), {
+    assertEquals(speechDraft("", text, true, "以上"), {
       text: "こんにちは。",
       send: true,
     });

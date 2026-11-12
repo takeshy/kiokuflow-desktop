@@ -48,15 +48,10 @@ export function JevSettingsPanel({ settings, onChange }: {
   return (
     <section className="jev-settings-card">
       <header><div><strong>Jev</strong><small>
-        Filter RAG candidates by relevance to the query. Applies to RAG Search,
-        Chat, Workflows and Discord. Jev or OpenRouter API usage charges apply.
+        Configure the Jev connection used when Jev is selected for a RAG index.
+        Choose OFF, Jev or Gemini separately for each index. Jev or OpenRouter API usage charges apply.
       </small></div></header>
-      <label className="settings-check">
-        <input type="checkbox" checked={settings.jevRagFilterEnabled}
-          onChange={event => onChange({ ...settings, jevRagFilterEnabled: event.target.checked })} />
-        Keep only matching RAG results
-      </label>
-      {settings.jevRagFilterEnabled && <>
+      <>
         <label className="settings-check jev-child-setting">
           <input type="checkbox" checked={router} disabled={busy} onChange={event => setRouter(event.target.checked)} />
           Use the configured OpenRouter key
@@ -75,7 +70,7 @@ export function JevSettingsPanel({ settings, onChange }: {
         </button>
         <small className="settings-hint">Unlock saved keys in Settings &gt; Encryption. Failed checks leave the saved connection unchanged.</small>
         {status && <div className="settings-status">{status}</div>}
-      </>}
+      </>
     </section>
   );
 }

@@ -1,3 +1,5 @@
+import { RerankingSelect } from "./RerankingSelect";
+import type { RerankingSettingsSection } from "./rerankingCredentials";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
@@ -23,6 +25,7 @@ import {
   getAdjacentRAGChunks,
   getRAGIndexedFiles,
   onRAGSyncProgress,
+  onRAGSearchWarning,
   type RAGIndexedFile,
   type RAGSearchResult,
   type RAGSetting,
@@ -90,7 +93,7 @@ export function RAGSearchPanel({
   directoryBase: string;
   settings: ChatSettings;
   onSettingsChange: (settings: ChatSettings) => void;
-  onOpenSettings: () => void;
+  onOpenSettings: (section?: RerankingSettingsSection) => void;
   onOpenFile: (file: FileRef) => void;
   onChatWithResults: (files: ChatFile[]) => void;
 }) {
@@ -102,7 +105,9 @@ export function RAGSearchPanel({
     ? settings.ragSettings[selectedName]
     : undefined;
   const [query, setQuery] = useState("");
-  const [jevFilter, setJevFilter] = useState(selectedSetting?.jevRagFilterEnabled ?? true);
+  const [rerankProvider, setRerankProvider] = useState(selectedSetting?.rerankProvider ?? "off");
+  const [hybridSearch, setHybridSearch] = useState(selectedSetting?.hybridSearch !== false);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [untilMatch, setUntilMatch] = useState(selectedSetting?.searchUntilMatch ?? false);
   const [topK, setTopK] = useState(selectedSetting?.topK ?? 5);
   const [threshold, setThreshold] = useState(
@@ -159,7 +164,8 @@ export function RAGSearchPanel({
   useEffect(() => {
     if (!selectedSetting) return;
     setTopK(selectedSetting.topK);
-    setJevFilter(selectedSetting.jevRagFilterEnabled);
+    setRerankProvider(selectedSetting.rerankProvider ?? "off");
+    setHybridSearch(selectedSetting.hybridSearch !== false);
     setUntilMatch(selectedSetting.searchUntilMatch ?? false);
     setThreshold(selectedSetting.scoreThreshold);
     setExtensions(selectedSetting.searchFileExtensions.join(", "));
@@ -210,10 +216,11 @@ export function RAGSearchPanel({
     if (!query.trim() || !selectedName || !selectedSetting || loading) return;
     setLoading(true);
     setError("");
+    setWarnings([]);
     setCopied(false);
     try {
       const result = await searchRAG(selectedName, query.trim(), {
-        ...resolveRAGSetting(settings, { ...selectedSetting, jevRagFilterEnabled: jevFilter }),
+        ...resolveRAGSetting(settings, { ...selectedSetting, rerankProvider, hybridSearch }),
         searchUntilMatch: untilMatch,
         topK,
         scoreThreshold: threshold,
@@ -222,6 +229,8 @@ export function RAGSearchPanel({
         ).filter(Boolean),
       });
       setResults(result);
+      const returnedWarnings = [...new Set(result.flatMap(item => item.warnings ?? []))];
+      if (returnedWarnings.length) setWarnings(returnedWarnings);
       setSelected(new Set());
       setExpanded(new Set());
       setSearched(true);
@@ -236,6 +245,8 @@ export function RAGSearchPanel({
       setLoading(false);
     }
   };
+
+  useEffect(() => onRAGSearchWarning(event => { if (event.name === selectedName) setWarnings(event.warnings); }), [selectedName]);
 
   const runSync = async () => {
     if (!selectedName || !selectedSetting) return;
@@ -513,7 +524,7 @@ export function RAGSearchPanel({
         <Search size={26} />
         <strong>No RAG settings</strong>
         <span>Create and sync a RAG setting before searching.</span>
-        <button type="button" onClick={onOpenSettings}>
+        <button type="button" onClick={() => onOpenSettings()}>
           Open RAG settings
         </button>
       </section>
@@ -660,15 +671,16 @@ export function RAGSearchPanel({
             <button
               type="button"
               className="rag-search-full-settings"
-              onClick={onOpenSettings}
+              onClick={() => onOpenSettings()}
             >
               Open full RAG settings
             </button>
           </div>
         )}
         <div className="rag-search-parameters">
-          <label><input type="checkbox" checked={jevFilter} disabled={!settings.jevRagFilterEnabled} onChange={event => setJevFilter(event.target.checked)} />Jev relevance filtering</label>
-          <label><input type="checkbox" checked={untilMatch} disabled={!jevFilter || !settings.jevRagFilterEnabled} onChange={event => setUntilMatch(event.target.checked)} />Search until a match</label>
+          <label className="settings-check"><input type="checkbox" checked={hybridSearch} onChange={event => setHybridSearch(event.target.checked)} />Hybrid search (BM25 + vector)</label>
+          {selectedSetting && <RerankingSelect settings={settings} rag={selectedSetting} ragName={selectedName} value={rerankProvider} onChange={setRerankProvider} onOpenSettings={onOpenSettings} />}
+          <label className="settings-check"><input type="checkbox" checked={untilMatch} disabled={rerankProvider === "off"} onChange={event => setUntilMatch(event.target.checked)} />Search until a match</label>
           <label>
             Top K<input
               type="number"
@@ -841,7 +853,8 @@ export function RAGSearchPanel({
             </button>
           </div>
         )}
-        {error && <div className="rag-search-error">{error}</div>}
+        {warnings.length > 0 && <p role="status" className="settings-hint">{warnings.join(" ")}</p>}
+      {error && <div className="rag-search-error">{error}</div>}
         {searched && !loading && !results.length && !error && (
           <div className="rag-search-no-results">No matching chunks.</div>
         )}
@@ -864,7 +877,7 @@ export function RAGSearchPanel({
                   <span className="rag-search-score">
                     {result.score.toFixed(3)}
                   </span>
-                  {result.jevUnchecked && <small>Jev: unchecked media</small>}
+                  {result.rerankScore !== undefined && <small>rerank: {result.rerankScore.toFixed(3)}/3</small>}{result.retrievalSource && <small>{result.retrievalSource}</small>}{result.jevUnchecked && <small>Rerank: unscored media (original position kept)</small>}
                 </label>
                 <button
                   type="button"

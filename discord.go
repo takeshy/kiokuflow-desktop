@@ -612,7 +612,14 @@ func (bot *discordBot) generate(conversation *discordConversation) (string, erro
 		if err == nil && len(results) > 0 {
 			var context strings.Builder
 			context.WriteString("\nRelevant RAG context:\n")
+			seenWarnings := make(map[string]bool)
 			for _, result := range results {
+				for _, warning := range result.Warnings {
+					if !seenWarnings[warning] {
+						fmt.Fprintf(&context, "Retrieval warning (tell the user): %s\n", warning)
+						seenWarnings[warning] = true
+					}
+				}
 				fmt.Fprintf(&context, "\n[Source: %s]\n%s\n", result.FilePath, result.Text)
 			}
 			request.SystemPrompt += context.String()

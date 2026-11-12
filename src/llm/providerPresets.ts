@@ -19,3 +19,8 @@ export function isOpenAIChatModel(model: string): boolean {
   return /^(?:gpt-(?:[5-9]|4\.1|4o)|o[1-9]|chatgpt-)/i.test(base)
     && !/(?:audio|realtime|live|transcribe|tts|image|embedding|search-preview|deep-research)/i.test(base);
 }
+
+export function isEmbeddingModel(model: string): boolean {
+  const id = model.split("/").at(-1) ?? model;
+  return /^(?:gemini-embedding|text-embedding|embedding)(?:-|$)/i.test(id);
+}

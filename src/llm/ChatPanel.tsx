@@ -54,6 +54,7 @@ import {
   onChatFunctionLimitRequest,
   onChatStream,
   onChatToolRequest,
+  onRAGSearchWarning,
   type PendingFileAction,
   readFile,
   readWorkspaceFile,
@@ -141,6 +142,7 @@ import { extractChatHtmlDocument } from "./chatHtmlPreview";
 import { sanitizePreviewDocument } from "../lib/sanitizeHtml";
 import { deduplicateEmptyNewChats, isEmptyNewChat } from "./chatHistory";
 import {
+  chatRagWarnings,
   formatRagSearchToolResult,
   MAX_DYNAMIC_RAG_RESULTS,
   MAX_RAG_SEARCHES_PER_TURN,
@@ -624,12 +626,16 @@ export function ChatPanel({
     "idle" | "saving" | "saved"
   >("idle");
   const savedNotePathsRef = useRef(new Map<string, string>());
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [activeID, setActiveID] = useState("");
   const [input, setInput] = useState("");
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ragWarning, setRagWarning] = useState("");
+  useEffect(() => onRAGSearchWarning(event => {
+    if (event.name === settings.selectedRagSetting) setRagWarning(chatRagWarnings(event.warnings).join(" "));
+  }), [settings.selectedRagSetting]);
   const [voiceMode, setVoiceMode] = useState(false);
   const voiceModeRef = useRef(false);
   const [pending, setPending] = useState<PendingFileAction | null>(null);
@@ -1204,6 +1210,7 @@ export function ChatPanel({
         setActiveID(initial.activeSessionId);
         setSessionsLocked(false);
         setError("");
+        setRagWarning("");
       });
     };
     window.addEventListener("llm-hub:history-encryption-changed", changed);
@@ -1220,6 +1227,7 @@ export function ChatPanel({
   useEffect(() => {
     setPending(null);
     setError("");
+    setRagWarning("");
     setAttachedFiles((current) => current.filter((file) => file.automatic));
     setDismissedAutomaticPath(null);
   }, [activeSession?.id]);
@@ -1627,6 +1635,7 @@ export function ChatPanel({
     if (invokedPluginCommand) {
       setLoading(true);
       setError("");
+      setRagWarning("");
       setInput("");
       try {
         const output = await invokedPluginCommand.execute(
@@ -1711,6 +1720,7 @@ export function ChatPanel({
     const displayText = invokedCommand ? promptText : text;
     setLoading(true);
     setError("");
+    setRagWarning("");
     setInput("");
     setDismissedAutomaticPath(activeFile?.path ?? null);
     setAttachedFiles([]);
@@ -2231,8 +2241,9 @@ export function ChatPanel({
     }
   };
 
-  const speechSettings = useMemo(() => resolveSpeechSettings(settings), [
+  const speechSettings = useMemo(() => resolveSpeechSettings(settings, settings.speech, language), [
     settings,
+    language,
   ]);
   const speech = useChatSpeech({
     input,
@@ -2795,6 +2806,7 @@ export function ChatPanel({
             </section>
           </div>
         )}
+        {ragWarning && <div role="status" className="settings-status">{ragWarning}</div>}
         {error && <div className="chat-error">{error}</div>}
         <div ref={endRef} />
       </div>
@@ -3337,44 +3349,46 @@ export function ChatPanel({
                 </button>
               </span>
             )}
-            <button
-              type="button"
-              className={`chat-send chat-speech-button ${
-                speech.listening || speech.busy ? "is-active" : ""
-              }`}
-              aria-label={speech.busy
-                ? t("speech.cancelLabel")
-                : speech.listening
-                ? t("speech.stopLabel")
-                : t("speech.title")}
-              aria-pressed={speech.listening || speech.busy}
-              aria-keyshortcuts={settings.speech.shortcut.replace(
-                "Ctrl",
-                "Control",
-              ) || undefined}
-              title={`${
-                speech.busy
-                  ? t("speech.cancelHint")
+            {(!input.trim() || speech.listening || speech.busy) && (
+              <button
+                type="button"
+                className={`chat-send chat-speech-button ${
+                  speech.listening || speech.busy ? "is-active" : ""
+                }`}
+                aria-label={speech.busy
+                  ? t("speech.cancelLabel")
                   : speech.listening
-                  ? t("speech.stopListening")
-                  : speech.supported
-                  ? t("speech.title")
-                  : t("speech.unsupported")
-              }${
-                settings.speech.shortcut
-                  ? ` (${speechShortcutLabel(settings.speech.shortcut)})`
-                  : ""
-              }`}
-              disabled={loading || !activeSession}
-              onClick={toggleSpeech}
-            >
-              {speech.listening || speech.busy
-                ? <Square size={14} />
-                : <Mic size={15} />}
-              {(speech.listening || speech.busy) && (
-                <span>{t("speech.stop")}</span>
-              )}
-            </button>
+                  ? t("speech.stopLabel")
+                  : t("speech.title")}
+                aria-pressed={speech.listening || speech.busy}
+                aria-keyshortcuts={settings.speech.shortcut.replace(
+                  "Ctrl",
+                  "Control",
+                ) || undefined}
+                title={`${
+                  speech.busy
+                    ? t("speech.cancelHint")
+                    : speech.listening
+                    ? t("speech.stopListening")
+                    : speech.supported
+                    ? t("speech.title")
+                    : t("speech.unsupported")
+                }${
+                  settings.speech.shortcut
+                    ? ` (${speechShortcutLabel(settings.speech.shortcut)})`
+                    : ""
+                }`}
+                disabled={loading || !activeSession}
+                onClick={toggleSpeech}
+              >
+                {speech.listening || speech.busy
+                  ? <Square size={14} />
+                  : <Mic size={15} />}
+                {(speech.listening || speech.busy) && (
+                  <span>{t("speech.stop")}</span>
+                )}
+              </button>
+            )}
           </div>
           <button
             type="button"

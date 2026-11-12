@@ -203,7 +203,7 @@ export function PluginHost({
   onChatSettingsChange: Dispatch<SetStateAction<ChatSettings>>;
   activeFile: { path: string; content: string } | null;
   onOpenChatSettings: () => void;
-  onOpenRAGSettings: () => void;
+  onOpenRAGSettings: (section?: "ai" | "encryption" | "rag") => void;
   onOpenFile: (file: FileRef) => void;
   onOpenFileInNewWidget: (
     file: FileRef,

@@ -41,7 +41,7 @@ test("OpenRouter public catalogue does not verify an invalid key", async () => {
 test("OpenCode Go keeps the full preset path and checks authentication without generating text", async () => {
   const call = mockRequests(request => request.url.endsWith("/chat/completions")
     ? { status: 400, body: { error: "messages required" } }
-    : { body: { data: [{ id: "vendor/chat", architecture: { output_modalities: ["text"] } }, { id: "vendor/image", architecture: { output_modalities: ["image"] } }] } });
+    : { body: { data: [{ id: "vendor/chat", architecture: { output_modalities: ["text"] } }, { id: "vendor/image", architecture: { output_modalities: ["image"] } }, { id: "openai/text-embedding-3-small" }] } });
   try {
     expect(await fetchProviderModels({ ...newModelProfile("openai", false, true), endpoint: compatibleProviderPresets.opencodego.endpoint, apiKey: "test-key" })).toEqual(["vendor/chat"]);
     expect(call.mock.calls.map(([request]) => request.url)).toEqual(["https://opencode.ai/zen/go/v1/models", "https://opencode.ai/zen/go/v1/chat/completions"]);

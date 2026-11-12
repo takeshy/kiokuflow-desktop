@@ -29,6 +29,7 @@ type App struct {
 	cliMu              sync.Mutex
 	cliCmd             *exec.Cmd
 	ragMu              sync.Mutex
+	ragSearchCache     *ragSearchCache
 	ragCancelMu        sync.Mutex
 	ragCancelled       map[string]bool
 	discordMu          sync.Mutex

@@ -6,6 +6,8 @@ import {
 } from "../lib/kakerattaSettings";
 import { validSpeechShortcut } from "./speechShortcut";
 import { hydrateSettingsCredentials, protectSettingsCredentials, unlockSettingsCredentials } from "../lib/settingsCredentials";
+import { isEmbeddingModel } from "./providerPresets";
+import type { Language } from "../i18n/translations";
 
 export type ChatProvider = "openai" | "gemini" | "vertex" | "anthropic" | "cli";
 export type LocalLLMFramework =
@@ -169,7 +171,7 @@ export interface SpeechSettings {
 export const defaultSpeechSettings: SpeechSettings = {
   silenceSeconds: 3,
   shortcut: "",
-  sendPhrase: "over, オーバー",
+  sendPhrase: "over",
   provider: "browser",
   endpointType: "openai",
   baseUrl: "https://api.openai.com/v1",
@@ -351,7 +353,15 @@ export interface ChatSettings {
 export function resolveSpeechSettings(
   settings: ChatSettings,
   speech: SpeechSettings = settings.speech,
+  uiLanguage: Language = "en",
 ): SpeechSettings {
+  // Resolve the new and legacy defaults from the speech language, falling back
+  // to the app language for auto. Explicit custom/empty phrases stay unchanged.
+  if (speech.sendPhrase === defaultSpeechSettings.sendPhrase || speech.sendPhrase === "over, オーバー") {
+    const language = speech.language && speech.language !== "auto" ? speech.language : uiLanguage;
+    const sendPhrase = /^ja(?:-|$)/i.test(language) ? "以上" : "over";
+    if (speech.sendPhrase !== sendPhrase) speech = { ...speech, sendPhrase };
+  }
   if (speech.provider === "browser") return speech;
   if (speech.endpointType === "vertex-transcribe") {
     const project = settings.provider === "vertex"
@@ -515,6 +525,9 @@ export const defaultChatSettings: ChatSettings = {
 };
 
 export const defaultRAGSetting: RAGSetting = {
+  hybridSearch: true,
+  rerankProvider: "off",
+  geminiApiKey: "",
   embeddingSource: "ai",
   embeddingProvider: "gemini",
   embeddingBaseUrl: "",
@@ -844,6 +857,9 @@ export function resolveRAGSetting(
   const useOpenRouter = settings.jevUseOpenRouter;
   const withJev = (resolved: RAGSetting): RAGSetting => ({
     ...resolved,
+    hybridSearch: resolved.hybridSearch !== false,
+    rerankProvider: resolved.rerankProvider === "gemini" || resolved.rerankProvider === "jev" ? resolved.rerankProvider : "off",
+    geminiApiKey: getGeminiRerankAPIKey(settings) || (resolved.embeddingProvider === "gemini" && !resolved.embeddingBaseUrl ? resolved.embeddingApiKey : ""),
     jevRagFilterEnabled: settings.jevRagFilterEnabled && resolved.jevRagFilterEnabled,
     jevApiKey: useOpenRouter ? openRouterKey : settings.jevApiKey,
     jevUseOpenRouter: useOpenRouter,
@@ -856,7 +872,7 @@ export function resolveRAGSetting(
   if (provider !== "vertex") {
     const profiles = settings.modelProfiles.filter(profile => profile.provider === provider);
     const profile = [...profiles].sort((a, b) => Number(b.id === settings.selectedModelProfileId) - Number(a.id === settings.selectedModelProfileId))
-      .find(profile => profile.enabled && !profile.local && !profile.openAICompatible && profile.apiKey.trim());
+      .find(profile => profile.enabled && (provider === "openai" || (!profile.local && !profile.openAICompatible)) && profile.apiKey.trim());
     if (profile) resolved = { ...resolved, endpoint: profile.endpoint, apiKey: profile.apiKey };
     else if (profiles.length) resolved = { ...resolved, endpoint: providerDefaults(provider).endpoint, apiKey: "" };
   }
@@ -873,6 +889,13 @@ export function resolveRAGSetting(
       ? resolved.vertexOAuthClientSecret
       : "",
   });
+}
+
+/** Reuse only an explicitly configured native Gemini connection. */
+export function getGeminiRerankAPIKey(settings: ChatSettings): string {
+  if (settings.modelProfiles.length === 0 && settings.provider === "gemini" && settings.apiKey.trim()) return settings.apiKey.trim();
+  return [...settings.modelProfiles].sort((a, b) => Number(b.id === settings.selectedModelProfileId) - Number(a.id === settings.selectedModelProfileId))
+    .find(profile => profile.provider === "gemini" && profile.enabled && !profile.local && !profile.openAICompatible && profile.apiKey.trim())?.apiKey.trim() ?? "";
 }
 
 function profileConfigured(
@@ -913,6 +936,27 @@ export function configuredChatProviders(
   return settings.verifiedCliTypes.length > 0 ? [...combined, "cli"] : combined;
 }
 
+// Embedding uses the provider connection, independently of checked Chat models.
+// A saved encrypted key remains configured while the session is locked.
+export function configuredEmbeddingProviders(settings: ChatSettings): RAGSetting["embeddingProvider"][] {
+  const encrypted = settings.encryptedCredentials ?? {};
+  return (["gemini", "vertex", "openai"] as const).filter(provider => {
+    if (provider === "vertex") {
+      const connection = settings.provider === "vertex" ? settings : settings.providerProfiles.vertex;
+      return Boolean(connection?.vertexOAuthClientId.trim() && connection.vertexProjectId.trim());
+    }
+    const profiles = settings.modelProfiles.filter(profile => profile.provider === provider);
+    if (profiles.length) {
+      return profiles.some(profile => profile.enabled &&
+        (provider === "openai" || (!profile.local && !profile.openAICompatible)) &&
+        (profile.apiKey.trim() || encrypted[JSON.stringify(["modelProfiles", profile.id, "apiKey"])]));
+    }
+    const connection = settings.provider === provider ? settings : settings.providerProfiles[provider];
+    const path = settings.provider === provider ? ["apiKey"] : ["providerProfiles", provider, "apiKey"];
+    return Boolean(connection && (connection.apiKey.trim() || encrypted[JSON.stringify(path)]));
+  });
+}
+
 export function loadChatSettings(
   storage: Pick<Storage, "getItem"> = localStorage,
 ): ChatSettings {
@@ -930,19 +974,17 @@ export function loadChatSettings(
         const compatible = item.provider === "openai" &&
           (item.local || (item.endpoint !== "" &&
             providerEndpointHost(item.endpoint) !== "api.openai.com"));
+        const isChatModel = (model: string) => !isEmbeddingModel(model);
+        const enabledModels = [...new Set((item.enabledModels || []).map(model => migrateOldDefaultModel(item.provider, model)))].filter(isChatModel);
+        const model = item.model ? migrateOldDefaultModel(item.provider, item.model) : "";
         return {
           ...newModelProfile(item.provider, item.local, compatible),
           ...item,
-          model: item.model ? migrateOldDefaultModel(item.provider, item.model) : "",
+          model: isChatModel(model) ? model : enabledModels[0] || "",
+          availableModels: (item.availableModels || []).filter(isChatModel),
           modelsVerified: item.modelsVerified === true,
           // Deduped because two retired ids can migrate onto the same model.
-          enabledModels: [
-            ...new Set(
-              (item.enabledModels || []).map((model) =>
-                migrateOldDefaultModel(item.provider, model)
-              ),
-            ),
-          ],
+          enabledModels,
           openAICompatible: item.openAICompatible ?? compatible,
         };
       })
@@ -957,11 +999,13 @@ export function loadChatSettings(
           (!profile.apiKey &&
             profile.endpoint === providerDefaults(kind).endpoint)
         ) return [];
+        const model = isEmbeddingModel(profile.model) ? "" : profile.model;
         return [{
           ...newModelProfile(kind),
           ...profile,
           id: crypto.randomUUID(),
-          enabledModels: profile.model ? [profile.model] : [],
+          model,
+          enabledModels: model ? [model] : [],
         }];
       });
     const selectedModelProfileId =
@@ -977,7 +1021,9 @@ export function loadChatSettings(
       ...parsed,
       speech: loadSpeechSettings(parsed.speech),
       provider,
-      model: migrateOldDefaultModel(provider, parsed.model),
+      model: isEmbeddingModel(parsed.model ?? "")
+        ? migratedProfiles.find(profile => profile.id === selectedModelProfileId)?.model || ""
+        : migrateOldDefaultModel(provider, parsed.model),
       providerProfiles:
         parsed.providerProfiles && typeof parsed.providerProfiles === "object"
           ? parsed.providerProfiles
@@ -1107,6 +1153,8 @@ export function loadChatSettings(
             return [name, {
               ...defaultRAGSetting,
               ...value,
+              hybridSearch: value.hybridSearch !== false,
+              rerankProvider: value.rerankProvider === "jev" || value.rerankProvider === "gemini" ? value.rerankProvider : "off",
               embeddingProvider: inferredProvider,
               embeddingSource,
               jevRagFilterEnabled: value.searchUntilMatch === undefined ? true : value.jevRagFilterEnabled ?? true,
@@ -1204,7 +1252,9 @@ export function configuredModelOptions(
 
 export function enabledProfileModels(profile: ModelProviderProfile): string[] {
   if (!profile.local && profile.modelsVerified !== true) return [];
-  return [...new Set(profile.enabledModels)].filter(model => model && (profile.local || profile.availableModels.includes(model)));
+  return [...new Set(profile.enabledModels)].filter(model => model &&
+    !isEmbeddingModel(model) &&
+    (profile.local || profile.availableModels.includes(model)));
 }
 
 export function activeChatModelOptions(settings: ChatSettings): ConfiguredModelOption[] {

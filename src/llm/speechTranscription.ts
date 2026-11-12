@@ -1,5 +1,5 @@
 import { SpeechError } from "./speechErrors";
-import { isGeminiSpeech, type SpeechSettings } from "./settings";
+import { defaultSpeechSettings, isGeminiSpeech, type SpeechSettings } from "./settings";
 import type {
   ExternalHTTPRequest,
   ExternalHTTPResponse,
@@ -49,7 +49,7 @@ export function speechDraft(
   base: string,
   transcript: string,
   final: boolean,
-  sendPhrase = "over, オーバー",
+  sendPhrase = defaultSpeechSettings.sendPhrase,
   commands?: SpeechCommands,
   replacements = "",
 ) {

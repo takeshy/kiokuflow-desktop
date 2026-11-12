@@ -1,11 +1,12 @@
-import { test } from "vitest";
+import { expect, test } from "vitest";
 import { assertEquals, assertStringIncludes } from "../testing/assert";
 import { renderToStaticMarkup } from "react-dom/server";
 import { I18nProvider } from "../i18n/context.tsx";
 import { t } from "../i18n/translations.ts";
 import { SpeechSettingsPanel } from "./SpeechSettingsPanel.tsx";
 import { SpeechActivity } from "./SpeechActivity.tsx";
-import { defaultChatSettings, selectSpeechEndpoint } from "./settings.ts";
+import { defaultChatSettings, resolveSpeechSettings, selectSpeechEndpoint } from "./settings.ts";
+import { speechDraft } from "./speechTranscription";
 import { SpeechError, speechErrorMessage } from "./speechErrors.ts";
 
 test("English speech settings contain no fixed Japanese UI text across services", () => {
@@ -21,10 +22,10 @@ test("English speech settings contain no fixed Japanese UI text across services"
   ) {
     const settings = endpoint
       ? selectSpeechEndpoint(
-        { ...defaultChatSettings.speech, sendPhrase: "" },
+        defaultChatSettings.speech,
         endpoint,
       )
-      : { ...defaultChatSettings.speech, sendPhrase: "" };
+      : defaultChatSettings.speech;
     const html = renderToStaticMarkup(
       <I18nProvider language="en">
         <SpeechSettingsPanel
@@ -52,6 +53,33 @@ test("Japanese speech settings still use Japanese labels", () => {
   );
   assertStringIncludes(html, "音声入力");
   assertStringIncludes(html, "日本語 (ja-JP)");
+  assertStringIncludes(html, 'value="以上"');
+});
+
+test("Japanese microphone send phrases default to 以上 across input modes and legacy settings", () => {
+  for (const provider of ["browser", "openai-compatible", "live"] as const) {
+    for (const sendPhrase of ["over", "over, オーバー"]) {
+      const speech = { ...defaultChatSettings.speech, provider, sendPhrase };
+      const resolved = resolveSpeechSettings(defaultChatSettings, speech, "ja");
+      expect(resolved.sendPhrase).toBe("以上");
+      expect(speechDraft("", "確認します。以上。", true, resolved.sendPhrase))
+        .toEqual({ text: "確認します。", send: true });
+      expect(speechDraft("", "確認します。以上", false, resolved.sendPhrase))
+        .toEqual({ text: "確認します。以上", send: false });
+      expect(speechDraft("", "以上の内容を確認します", true, resolved.sendPhrase).send).toBe(false);
+      expect(speechDraft("", "以上。", true, resolved.sendPhrase))
+        .toEqual({ text: "", send: true });
+      expect(resolveSpeechSettings(defaultChatSettings, speech, "en").sendPhrase).toBe("over");
+    }
+  }
+});
+
+test("explicit speech language takes priority while custom or disabled send phrases are retained", () => {
+  expect(resolveSpeechSettings(defaultChatSettings, { ...defaultChatSettings.speech, language: "ja-JP" }, "en").sendPhrase).toBe("以上");
+  expect(resolveSpeechSettings(defaultChatSettings, { ...defaultChatSettings.speech, language: "en-US" }, "ja").sendPhrase).toBe("over");
+  for (const sendPhrase of ["", "送信して", "done", "以上"]) {
+    expect(resolveSpeechSettings(defaultChatSettings, { ...defaultChatSettings.speech, sendPhrase }, "ja").sendPhrase).toBe(sendPhrase);
+  }
 });
 
 test("speech activity and service errors follow the UI language", () => {

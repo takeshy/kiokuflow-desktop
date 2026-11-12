@@ -1049,7 +1049,7 @@ const ja: TranslationStrings = {
   "speech.shortcutCleared": "ショートカットを解除しました。",
   "speech.clearShortcut": "割り当てを解除",
   "speech.sendPhrase": "送信の合図",
-  "speech.phrasePlaceholder": "例：over, オーバー, 送信して",
+  "speech.phrasePlaceholder": "例：以上, 送信して",
   "speech.phraseHelp":
     "複数の合図はカンマで区切ります。空欄にすると自動送信しません。",
   "speech.browserSendHelp":

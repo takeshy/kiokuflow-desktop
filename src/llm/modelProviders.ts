@@ -1,6 +1,6 @@
 import { workflowHTTPRequest } from "../lib/wailsBackend";
 import type { ModelProviderProfile } from "./settings";
-import { compatibleProvider, isOpenAIChatModel } from "./providerPresets";
+import { compatibleProvider, isEmbeddingModel, isOpenAIChatModel } from "./providerPresets";
 
 function modelURL(profile: ModelProviderProfile): string {
   const base = profile.endpoint.replace(/\/+$/, "")
@@ -93,7 +93,7 @@ export async function fetchProviderModels(
       if (response.status < 200 || response.status >= 300) continue;
       const models = openCodeModels(JSON.parse(response.body));
       if (models.length) {
-        return [...new Set(models)].sort((a, b) => a.localeCompare(b));
+        return [...new Set(models.filter(model => !isEmbeddingModel(model)))].sort((a, b) => a.localeCompare(b));
       }
     }
     throw new Error(
@@ -121,7 +121,7 @@ export async function fetchProviderModels(
       };
       return [
         ...new Set(
-          (ollama.models ?? []).map((item) => item.name || "").filter(Boolean),
+          (ollama.models ?? []).map((item) => item.name || "").filter(model => model && !isEmbeddingModel(model)),
         ),
       ].sort((a, b) => a.localeCompare(b));
     }
@@ -163,7 +163,7 @@ export async function fetchProviderModels(
       (!officialOpenAI || (isOpenAIChatModel(item.id) && !(item.shutdown_date && Date.parse(item.shutdown_date) <= Date.now()))) &&
       (!preset || !item.architecture?.output_modalities || item.architecture.output_modalities.includes("text"))
     ).map((item) => item.id || "");
-  return [...new Set(models.filter(Boolean))].sort((a, b) =>
+  return [...new Set(models.filter(model => model && !isEmbeddingModel(model)))].sort((a, b) =>
     a.localeCompare(b)
   );
 }

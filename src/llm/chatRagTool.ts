@@ -4,6 +4,15 @@ export const RAG_SEARCH_TOOL_NAME = "rag_search";
 export const MAX_RAG_SEARCHES_PER_TURN = 3;
 export const MAX_DYNAMIC_RAG_RESULTS = 3;
 
+// Media scoring details belong in the RAG search panel, not in Chat notices
+// or the model's tool warnings. Actual provider/scoring failures remain visible.
+export function chatRagWarnings(warnings: readonly string[]): string[] {
+  return warnings.filter(warning =>
+    !/^\d+ candidate\(s\) could not be scored; their original search positions are preserved\.$/.test(warning) &&
+    warning !== "Stopped search-until-found: unscored media is not evidence of low relevance."
+  );
+}
+
 export const ragSearchTool: ChatToolDefinition = {
   name: RAG_SEARCH_TOOL_NAME,
   description:
@@ -33,13 +42,20 @@ export function formatRagSearchToolResult(
 ): string {
   return JSON.stringify({
     query,
-    results: results.map((result) => ({
-      filePath: result.filePath,
-      ...(result.pageLabel ? { pageLabel: result.pageLabel } : {}),
-      score: result.score,
-      text: result.text,
-      ...(result.jevUnchecked ? { jevUnchecked: true } : {}),
-    })),
+    results: results.map((result) => {
+      const warnings = chatRagWarnings(result.warnings ?? []);
+      return {
+        filePath: result.filePath,
+        ...(result.pageLabel ? { pageLabel: result.pageLabel } : {}),
+        score: result.score,
+        ...(result.rerankScore !== undefined ? { rerankScore: result.rerankScore } : {}),
+        ...(result.retrievalSource ? { retrievalSource: result.retrievalSource } : {}),
+        ...(result.rerankSkippedReason ? { rerankSkippedReason: result.rerankSkippedReason } : {}),
+        ...(warnings.length ? { warnings } : {}),
+        text: result.text,
+        ...(result.jevUnchecked ? { jevUnchecked: true } : {}),
+      };
+    }),
     remainingSearches,
   });
 }
@@ -56,10 +72,15 @@ export function mergeRagSources(
     const key = `${result.filePath}|${result.pageLabel ?? ""}`;
     if (seen.has(key)) continue;
     seen.add(key);
+    const warnings = chatRagWarnings(result.warnings ?? []);
     merged.push({
       path: result.filePath,
       ...(result.pageLabel ? { pageLabel: result.pageLabel } : {}),
       score: result.score,
+      ...(result.rerankScore !== undefined ? { rerankScore: result.rerankScore } : {}),
+      ...(result.retrievalSource ? { retrievalSource: result.retrievalSource } : {}),
+      ...(result.rerankSkippedReason ? { rerankSkippedReason: result.rerankSkippedReason } : {}),
+      ...(warnings.length ? { warnings } : {}),
     });
   }
   return merged;
