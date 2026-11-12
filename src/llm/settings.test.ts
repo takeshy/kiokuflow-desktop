@@ -590,4 +590,21 @@ test("saved OpenAI embedding model checkboxes are removed without enabling Chat"
   expect(settings.model).toBe("");
   expect(configuredModelOptions({ ...defaultChatSettings, modelProfiles: [profile] })).toEqual([]);
   expect(configuredEmbeddingProviders(settings)).toContain("openai");
+  expect(settings.modelProfiles[0].embeddingModels).toEqual(["text-embedding-3-small", "openai/text-embedding-3-large"]);
+});
+
+test("embedding model aliases stay available for RAG and never appear in Chat options", () => {
+  const profile = {
+    ...newModelProfile("openai", false, true), id: "compatible", apiKey: "key", modelsVerified: true,
+    embeddingModels: ["custom-encoder"], availableModels: ["custom-encoder", "chat-model"],
+    enabledModels: ["custom-encoder"], model: "custom-encoder",
+  };
+  const settings = loadChatSettings({ getItem: () => JSON.stringify({ provider: "openai", apiKey: "key", model: profile.model, selectedModelProfileId: profile.id, modelProfiles: [profile] }) });
+  expect(settings.modelProfiles[0].availableModels).toEqual(["chat-model"]);
+  expect(settings.modelProfiles[0].enabledModels).toEqual([]);
+  expect(settings.modelProfiles[0].embeddingModels).toEqual(["custom-encoder"]);
+  expect(settings.model).toBe("");
+  expect(configuredModelOptions({ ...defaultChatSettings, modelProfiles: [profile] })).toEqual([]);
+  const changed = updateModelProfile(settings, profile.id, { apiKey: "changed-key" });
+  expect(changed.modelProfiles[0].embeddingModels).toEqual([]);
 });

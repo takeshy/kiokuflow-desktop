@@ -3896,6 +3896,35 @@ body.resizing-side-pane * {
   color: white;
 }
 
+.credentials-unlock-dialog {
+  width: min(460px, calc(100% - 36px));
+  padding: 0;
+  color: var(--text);
+}
+.credentials-unlock-dialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+.credentials-unlock-dialog small {
+  color: var(--text-muted);
+}
+.encryption-remember-options {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+.encryption-remember-options .settings-field {
+  margin: 0;
+}
+.encryption-remember-options small {
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.credentials-unlock-dialog > footer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .workflow-node-modal {
   width: min(720px, 100%);
   max-height: min(820px, 94vh);
@@ -14382,6 +14411,23 @@ body.resizing-modal {
   background: var(--panel-subtle);
   color: var(--text);
   padding: 8px 10px;
+}
+
+.embedding-model-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.embedding-model-controls > select {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+}
+
+.embedding-model-field > .settings-hint {
+  line-height: 1.5;
 }
 
 .reranking-field {

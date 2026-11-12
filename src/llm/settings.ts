@@ -6,7 +6,7 @@ import {
 } from "../lib/kakerattaSettings";
 import { validSpeechShortcut } from "./speechShortcut";
 import { hydrateSettingsCredentials, protectSettingsCredentials, unlockSettingsCredentials } from "../lib/settingsCredentials";
-import { isEmbeddingModel } from "./providerPresets";
+import { isEmbeddingModel, isProfileEmbeddingModel } from "./providerPresets";
 import type { Language } from "../i18n/translations";
 
 export type ChatProvider = "openai" | "gemini" | "vertex" | "anthropic" | "cli";
@@ -100,6 +100,8 @@ export interface ModelProviderProfile extends APIProviderProfile {
   provider: Exclude<ChatProvider, "cli" | "vertex">;
   enabledModels: string[];
   availableModels: string[];
+  /** Available for RAG without individual enable checkboxes. */
+  embeddingModels?: string[];
   modelsVerified?: boolean;
   enabled: boolean;
   local: boolean;
@@ -730,6 +732,7 @@ export function updateModelProfile(
   if (connectionChanged) {
     updated.modelsVerified = false;
     updated.availableModels = [];
+    updated.embeddingModels = [];
     updated.enabledModels = [];
   }
   updated.model = updated.enabledModels.includes(updated.model) ? updated.model : updated.enabledModels[0] || "";
@@ -784,6 +787,7 @@ export function newModelProfile(
     model: "",
     enabledModels: [],
     availableModels: [],
+    embeddingModels: [],
     modelsVerified: false,
     enabled: true,
     local,
@@ -871,8 +875,7 @@ export function resolveRAGSetting(
   let resolved = switchChatProvider(settings, provider);
   if (provider !== "vertex") {
     const profiles = settings.modelProfiles.filter(profile => profile.provider === provider);
-    const profile = [...profiles].sort((a, b) => Number(b.id === settings.selectedModelProfileId) - Number(a.id === settings.selectedModelProfileId))
-      .find(profile => profile.enabled && (provider === "openai" || (!profile.local && !profile.openAICompatible)) && profile.apiKey.trim());
+    const profile = ragEmbeddingProfile(settings, provider);
     if (profile) resolved = { ...resolved, endpoint: profile.endpoint, apiKey: profile.apiKey };
     else if (profiles.length) resolved = { ...resolved, endpoint: providerDefaults(provider).endpoint, apiKey: "" };
   }
@@ -889,6 +892,15 @@ export function resolveRAGSetting(
       ? resolved.vertexOAuthClientSecret
       : "",
   });
+}
+
+/** The exact AI connection used for both RAG credentials and model discovery. */
+export function ragEmbeddingProfile(settings: ChatSettings, provider: RAGSetting["embeddingProvider"]): ModelProviderProfile | undefined {
+  if (provider === "vertex") return undefined;
+  return [...settings.modelProfiles].sort((a, b) => Number(b.id === settings.selectedModelProfileId) - Number(a.id === settings.selectedModelProfileId))
+    .find(profile => profile.provider === provider && profile.enabled &&
+      (provider === "openai" || (!profile.local && !profile.openAICompatible)) &&
+      profile.apiKey.trim());
 }
 
 /** Reuse only an explicitly configured native Gemini connection. */
@@ -974,7 +986,12 @@ export function loadChatSettings(
         const compatible = item.provider === "openai" &&
           (item.local || (item.endpoint !== "" &&
             providerEndpointHost(item.endpoint) !== "api.openai.com"));
-        const isChatModel = (model: string) => !isEmbeddingModel(model);
+        const embeddingModels = [...new Set([
+          ...(item.embeddingModels || []),
+          ...(item.availableModels || []).filter(isEmbeddingModel),
+          ...(item.enabledModels || []).filter(isEmbeddingModel),
+        ])];
+        const isChatModel = (model: string) => !isEmbeddingModel(model) && !embeddingModels.includes(model);
         const enabledModels = [...new Set((item.enabledModels || []).map(model => migrateOldDefaultModel(item.provider, model)))].filter(isChatModel);
         const model = item.model ? migrateOldDefaultModel(item.provider, item.model) : "";
         return {
@@ -982,6 +999,7 @@ export function loadChatSettings(
           ...item,
           model: isChatModel(model) ? model : enabledModels[0] || "",
           availableModels: (item.availableModels || []).filter(isChatModel),
+          embeddingModels,
           modelsVerified: item.modelsVerified === true,
           // Deduped because two retired ids can migrate onto the same model.
           enabledModels,
@@ -1021,7 +1039,7 @@ export function loadChatSettings(
       ...parsed,
       speech: loadSpeechSettings(parsed.speech),
       provider,
-      model: isEmbeddingModel(parsed.model ?? "")
+      model: isEmbeddingModel(parsed.model ?? "") || migratedProfiles.find(profile => profile.id === selectedModelProfileId)?.embeddingModels?.includes(parsed.model ?? "")
         ? migratedProfiles.find(profile => profile.id === selectedModelProfileId)?.model || ""
         : migrateOldDefaultModel(provider, parsed.model),
       providerProfiles:
@@ -1253,7 +1271,7 @@ export function configuredModelOptions(
 export function enabledProfileModels(profile: ModelProviderProfile): string[] {
   if (!profile.local && profile.modelsVerified !== true) return [];
   return [...new Set(profile.enabledModels)].filter(model => model &&
-    !isEmbeddingModel(model) &&
+    !isProfileEmbeddingModel(profile, model) &&
     (profile.local || profile.availableModels.includes(model)));
 }
 

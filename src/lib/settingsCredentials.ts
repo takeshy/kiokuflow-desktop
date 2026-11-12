@@ -6,6 +6,12 @@ type CipherMap = Record<string, string>;
 const secretNames = new Set(["apiKey", "jevApiKey", "embeddingApiKey", "vertexOAuthClientSecret", "oauthClientSecret", "localPassword", "password", "botToken"]);
 const sessionValues = new Map<string, string>();
 
+export function hasLockedSettingsCredentials(document: { encryptedCredentials?: CipherMap }): boolean {
+  if (!historyEncryptionProfile()) return false;
+  return Object.values((document.encryptedCredentials ?? {}) as CipherMap)
+    .some((cipher) => !!cipher && !sessionValues.has(cipher));
+}
+
 // Array entries with IDs use stable paths, so deleting/reordering profiles
 // cannot attach a saved key to a different connection.
 function visit(value: unknown, transform: (path: string, value: string) => string, path: string[] = []): unknown {

@@ -22,5 +22,10 @@ export function isOpenAIChatModel(model: string): boolean {
 
 export function isEmbeddingModel(model: string): boolean {
   const id = model.split("/").at(-1) ?? model;
-  return /^(?:gemini-embedding|text-embedding|embedding)(?:-|$)/i.test(id);
+  return /(?:^|[-_])embed(?:ding)?s?(?:[-_:]|$)/i.test(id) ||
+    /^(?:bge|gte|e5|multilingual-e5|all-minilm)(?:[-_:]|$)/i.test(id);
+}
+
+export function isProfileEmbeddingModel(profile: Pick<ModelProviderProfile, "embeddingModels">, model: string): boolean {
+  return isEmbeddingModel(model) || profile.embeddingModels?.includes(model) === true;
 }

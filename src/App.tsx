@@ -51,6 +51,17 @@ import {
 } from "lucide-react";
 import packageJson from "../package.json";
 import { MemoListModal } from "./components/MemoListModal";
+import { CredentialsUnlockDialog } from "./components/CredentialsUnlockDialog";
+import { EncryptionRememberOptions } from "./components/EncryptionRememberOptions";
+import { hasLockedSettingsCredentials } from "./lib/settingsCredentials";
+import { encryptionUnlockSupported, forgetEncryptionUnlock } from "./lib/wailsBackend";
+import {
+  encryptionRememberDays,
+  rememberHistoryEncryption,
+  restoreHistoryEncryption,
+  setEncryptionRememberDays,
+  type EncryptionRememberDays,
+} from "./lib/rememberedEncryption";
 import { OkfSettingsCard } from "./okf/OkfSettingsCard";
 import { FileTree } from "./components/FileTree";
 import { PluginHost } from "./plugins/PluginHost";
@@ -165,6 +176,7 @@ import {
 import { type ActiveSelection, formatActiveSelection } from "./llm/selection";
 import { JevSettingsPanel } from "./llm/JevSettingsPanel";
 import { RerankingSelect } from "./llm/RerankingSelect";
+import { EmbeddingModelSelect } from "./llm/EmbeddingModelSelect";
 import { ModelProviderManager } from "./llm/ModelProviderManager";
 import { SpeechSettingsPanel } from "./llm/SpeechSettingsPanel";
 import { McpHttpClient, McpHttpError } from "./mcp/httpClient";
@@ -183,6 +195,7 @@ import { isBinaryDocumentFileName } from "./dashboard/documentKind";
 import {
   configureOrUnlockHistoryEncryption,
   historyEncryptionConfigured,
+  historyEncryptionUnlocked,
   historyEncryptionPreferences,
   migrateWorkflowHistoryStorage,
   setHistoryEncryptionPreferences,
@@ -1119,6 +1132,13 @@ export default function App() {
     | "plugins"
   >("general");
   const [chatSettings, setChatSettings] = useState(loadChatSettings);
+  const [credentialsUnlockOpen, setCredentialsUnlockOpen] = useState(false);
+  const credentialsUnlockTask = useRef<Promise<void>>(Promise.resolve());
+  const credentialsRestoreTask = useRef<Promise<{ supported: boolean; restored: boolean }> | null>(null);
+  const [rememberUnlockSupported, setRememberUnlockSupported] = useState(false);
+  const [rememberUnlockDays, setRememberUnlockDays] = useState(encryptionRememberDays);
+  const [rememberUnlockBusy, setRememberUnlockBusy] = useState(false);
+  const rememberUnlockSaving = useRef(false);
   const [commandSkills, setCommandSkills] = useState<WorkspaceSkill[]>([]);
   useEffect(() => { const update = () => setChatSettings(loadChatSettings()); window.addEventListener("mcp-approval-settings-changed", update); return () => window.removeEventListener("mcp-approval-settings-changed", update); }, []);
   const [historyEncryption, setHistoryEncryption] = useState(
@@ -1636,12 +1656,72 @@ export default function App() {
 
   useEffect(() => {
     const unlock = () => {
-      void saveChatSettings(chatSettings).then(unlockChatSettings).then(setChatSettings)
-        .catch((error) => setHistoryEncryptionStatus(`API keys could not be unlocked: ${error instanceof Error ? error.message : String(error)}`));
+      const task = saveChatSettings(chatSettings).then(unlockChatSettings).then((settings) => {
+        setChatSettings(settings);
+      });
+      credentialsUnlockTask.current = task;
+      void task.catch((error) => setHistoryEncryptionStatus(`API keys could not be unlocked: ${error instanceof Error ? error.message : String(error)}`));
     };
     window.addEventListener("llm-hub:history-encryption-unlocked", unlock);
     return () => window.removeEventListener("llm-hub:history-encryption-unlocked", unlock);
   }, [chatSettings]);
+
+  useEffect(() => {
+    let active = true;
+    // Share one restore attempt across StrictMode's effect replay. Restoring
+    // dispatches the same event as a password entry, so all keys hydrate first.
+    credentialsRestoreTask.current ??= (async () => {
+      const supported = await encryptionUnlockSupported().catch(() => false);
+      if (!supported || !await restoreHistoryEncryption()) return { supported, restored: false };
+      try {
+        await credentialsUnlockTask.current;
+        return { supported, restored: true };
+      } catch {
+        await forgetEncryptionUnlock().catch(() => {});
+        return { supported, restored: false };
+      }
+    })();
+    void credentialsRestoreTask.current.then(({ supported, restored }) => {
+      if (!active) return;
+      setRememberUnlockSupported(supported);
+      setCredentialsUnlockOpen(!restored && hasLockedSettingsCredentials(loadChatSettings()));
+    });
+    return () => { active = false; };
+  }, []);
+
+  const unlockEncryption = async (password: string) => {
+    await configureOrUnlockHistoryEncryption(password);
+    await credentialsUnlockTask.current;
+    if (rememberUnlockSupported) await rememberHistoryEncryption(rememberUnlockDays);
+    setHistoryEncryptionReady(true);
+    setHistoryEncryptionPassword("");
+    setHistoryEncryptionStatus("Encryption is unlocked for this session.");
+    setCredentialsUnlockOpen(false);
+  };
+
+  const changeRememberUnlockDays = async (days: EncryptionRememberDays) => {
+    if (rememberUnlockSaving.current) return;
+    rememberUnlockSaving.current = true;
+    setRememberUnlockBusy(true);
+    const previousDays = rememberUnlockDays;
+    setRememberUnlockDays(days);
+    setEncryptionRememberDays(days);
+    try {
+      if (days === 0 || historyEncryptionUnlocked()) {
+        await rememberHistoryEncryption(days);
+        setHistoryEncryptionStatus(tr(days === 0 ? "credentials.rememberCleared" : "credentials.rememberSaved"));
+      } else {
+        setHistoryEncryptionStatus(tr("credentials.rememberNextUnlock"));
+      }
+    } catch {
+      setRememberUnlockDays(previousDays);
+      setEncryptionRememberDays(previousDays);
+      setHistoryEncryptionStatus(tr("credentials.rememberFailed"));
+    } finally {
+      rememberUnlockSaving.current = false;
+      setRememberUnlockBusy(false);
+    }
+  };
 
   const kakerattaSettings = aiEnabled ? chatSettings : {
     ...chatSettings,
@@ -2310,6 +2390,15 @@ export default function App() {
 
   return (
     <I18nProvider language={language}>
+      {credentialsUnlockOpen && (
+        <CredentialsUnlockDialog
+          onUnlock={unlockEncryption}
+          onClose={() => setCredentialsUnlockOpen(false)}
+          rememberSupported={rememberUnlockSupported}
+          rememberDays={rememberUnlockDays}
+          onRememberDaysChange={setRememberUnlockDays}
+        />
+      )}
       <main className="app-shell">
         <header className="topbar">
           <div className="document-meta" ref={appMenuRef}>
@@ -3452,7 +3541,7 @@ export default function App() {
                             </strong>
                             <small>
                               {historyEncryptionReady
-                                ? "Enter your password after restarting the app to read encrypted history."
+                                ? "Enter your password when encryption is locked."
                                 : "Choose the password that will protect your history encryption key."}
                             </small>
                           </div>
@@ -3484,13 +3573,8 @@ export default function App() {
                             disabled={!historyEncryptionPassword}
                             onClick={async () => {
                               try {
-                                await configureOrUnlockHistoryEncryption(
+                                await unlockEncryption(
                                   historyEncryptionPassword,
-                                );
-                                setHistoryEncryptionReady(true);
-                                setHistoryEncryptionPassword("");
-                                setHistoryEncryptionStatus(
-                                  "Encryption is unlocked for this session.",
                                 );
                               } catch (error) {
                                 setHistoryEncryptionStatus(
@@ -3504,6 +3588,13 @@ export default function App() {
                             {historyEncryptionReady ? "Unlock" : "Create key"}
                           </button>
                         </div>
+                        {rememberUnlockSupported && (
+                          <EncryptionRememberOptions
+                            days={rememberUnlockDays}
+                            onChange={(days) => void changeRememberUnlockDays(days)}
+                            disabled={rememberUnlockBusy}
+                          />
+                        )}
                         {historyEncryptionStatus && (
                           <div className="encryption-settings-feedback">
                             {historyEncryptionStatus}
@@ -5412,10 +5503,7 @@ export default function App() {
                                         embeddingModel:
                                           embeddingProvider === "vertex"
                                             ? "gemini-embedding-2"
-                                            : current
-                                              .ragSettings[
-                                                current.selectedRagSetting!
-                                              ].embeddingModel,
+                                            : "",
                                       },
                                     },
                                   }));
@@ -5726,34 +5814,32 @@ export default function App() {
                               </small>
                             </details>
                           )}
-                          <label className="settings-field">
-                            <span>Embedding model</span>
-                            <input
-                              value={selectedRAG.embeddingModel}
-                              placeholder={selectedRAG.embeddingProvider ===
-                                  "vertex"
-                                ? "gemini-embedding-2"
-                                : selectedRAG.embeddingProvider === "gemini"
-                                ? "gemini-embedding-2-preview"
-                                : "Model name"}
-                              onChange={(event) => {
-                                const value = event.target.value;
-                                setChatSettings((current) => ({
-                                  ...current,
-                                  ragSettings: {
-                                    ...current.ragSettings,
-                                    [current.selectedRagSetting!]: {
-                                      ...current
-                                        .ragSettings[
-                                          current.selectedRagSetting!
-                                        ],
-                                      embeddingModel: value,
-                                    },
+                          <EmbeddingModelSelect
+                            settings={chatSettings}
+                            rag={selectedRAG}
+                            onChange={(value) => {
+                              setChatSettings((current) => ({
+                                ...current,
+                                ragSettings: {
+                                  ...current.ragSettings,
+                                  [current.selectedRagSetting!]: {
+                                    ...current.ragSettings[current.selectedRagSetting!],
+                                    embeddingModel: value,
                                   },
-                                }));
-                              }}
-                            />
-                          </label>
+                                },
+                              }));
+                            }}
+                            onModelsDiscovered={(connection, models) => setChatSettings(current => {
+                              if (!current.modelProfiles.some(profile => profile.id === connection.id && profile.endpoint === connection.endpoint && profile.apiKey === connection.apiKey)) return current;
+                              return {
+                                ...current,
+                                modelProfiles: current.modelProfiles.map(profile =>
+                                  profile.id === connection.id && profile.endpoint === connection.endpoint && profile.apiKey === connection.apiKey
+                                    ? { ...profile, embeddingModels: models } : profile
+                                ),
+                              };
+                            })}
+                          />
                           <div className="rag-number-grid">
                             <label className="settings-field">
                               <span>Chunk size</span>
@@ -5943,10 +6029,13 @@ export default function App() {
                               type="button"
                               className="settings-choice"
                               disabled={ragBusy || !workspacePath ||
+                                (selectedRAG.embeddingProvider === "openai" && !selectedRAG.embeddingModel.trim()) ||
                                 (selectedRAG.embeddingProvider === "vertex" &&
                                   !vertexConnected)}
                               title={!workspacePath
                                 ? "An active Workspace is required"
+                                : selectedRAG.embeddingProvider === "openai" && !selectedRAG.embeddingModel.trim()
+                                ? "Select an embedding model before syncing"
                                 : selectedRAG.embeddingProvider === "vertex" &&
                                     !vertexConnected
                                 ? "Connect Vertex AI before syncing"

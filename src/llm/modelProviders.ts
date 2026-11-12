@@ -52,9 +52,21 @@ function openCodeModels(payload: unknown): string[] {
   return models;
 }
 
-export async function fetchProviderModels(
+export interface ProviderModelCatalog {
+  chatModels: string[];
+  embeddingModels: string[];
+}
+
+function catalog(chat: string[], embedding: string[] = []): ProviderModelCatalog {
+  const sorted = (models: string[]) => [...new Set(models.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const embeddings = sorted([...embedding, ...chat.filter(isEmbeddingModel)]);
+  return { chatModels: sorted(chat.filter(model => !embeddings.includes(model))), embeddingModels: embeddings };
+}
+
+export async function fetchProviderModelCatalog(
   profile: ModelProviderProfile,
-): Promise<string[]> {
+  verifyChat = true,
+): Promise<ProviderModelCatalog> {
   const headers: Record<string, string> = {};
   const preset = compatibleProvider(profile);
   if (!profile.local && !profile.apiKey.trim()) throw new Error("Enter an API key before verifying models.");
@@ -93,7 +105,7 @@ export async function fetchProviderModels(
       if (response.status < 200 || response.status >= 300) continue;
       const models = openCodeModels(JSON.parse(response.body));
       if (models.length) {
-        return [...new Set(models.filter(model => !isEmbeddingModel(model)))].sort((a, b) => a.localeCompare(b));
+        return catalog(models);
       }
     }
     throw new Error(
@@ -119,11 +131,7 @@ export async function fetchProviderModels(
       const ollama = JSON.parse(response.body) as {
         models?: Array<{ name?: string }>;
       };
-      return [
-        ...new Set(
-          (ollama.models ?? []).map((item) => item.name || "").filter(model => model && !isEmbeddingModel(model)),
-        ),
-      ].sort((a, b) => a.localeCompare(b));
+      return catalog((ollama.models ?? []).map(item => item.name || ""));
     }
   }
   if (response.status < 200 || response.status >= 300) {
@@ -134,10 +142,25 @@ export async function fetchProviderModels(
     );
   }
   const payload = JSON.parse(response.body) as {
-    data?: Array<{ id?: string; shutdown_date?: string; architecture?: { output_modalities?: string[] } }>;
+    data?: Array<{ id?: string; shutdown_date?: string; capabilities?: string[]; architecture?: { output_modalities?: string[] } }>;
     models?: Array<{ name?: string; supportedGenerationMethods?: string[] }>;
+    nextPageToken?: string;
   };
-  if (preset) {
+  if (profile.provider === "gemini") {
+    const seen = new Set<string>();
+    while (payload.nextPageToken) {
+      if (seen.has(payload.nextPageToken)) throw new Error("The provider returned a repeated model page token.");
+      seen.add(payload.nextPageToken);
+      const url = new URL(modelURL(profile));
+      url.searchParams.set("pageToken", payload.nextPageToken);
+      const response = await workflowHTTPRequest({ url: url.toString(), method: "GET", headers });
+      if (response.status < 200 || response.status >= 300) throw new Error(`Model request failed (${response.status}): ${response.body.slice(0, 240)}`);
+      const page = JSON.parse(response.body) as Pick<typeof payload, "models" | "nextPageToken">;
+      payload.models = [...(payload.models ?? []), ...(page.models ?? [])];
+      payload.nextPageToken = page.nextPageToken;
+    }
+  }
+  if (preset && verifyChat) {
     // Public catalogues do not prove that the supplied key is valid.
     const base = profile.endpoint.replace(/\/+$/, "");
     const first = payload.data?.find(item => typeof item.id === "string");
@@ -154,6 +177,14 @@ export async function fetchProviderModels(
     }
   }
   const officialOpenAI = profile.provider === "openai" && !profile.openAICompatible && !profile.local;
+  const embeddingModels = profile.provider === "gemini"
+    ? (payload.models ?? []).filter(item => isEmbeddingModel(item.name ?? "") ||
+      item.supportedGenerationMethods?.some(method => /embed/i.test(method)))
+      .map(item => item.name?.replace(/^models\//, "") || "")
+    : (payload.data ?? []).filter(item => isEmbeddingModel(item.id ?? "") ||
+      item.capabilities?.some(capability => /embed/i.test(capability)) ||
+      item.architecture?.output_modalities?.some(modality => /embed/i.test(modality)))
+      .map(item => item.id || "");
   const models = profile.provider === "gemini"
     ? (payload.models ?? []).filter(item => !item.supportedGenerationMethods || item.supportedGenerationMethods.includes("generateContent")).map((item) =>
       item.name?.replace(/^models\//, "") || ""
@@ -163,7 +194,9 @@ export async function fetchProviderModels(
       (!officialOpenAI || (isOpenAIChatModel(item.id) && !(item.shutdown_date && Date.parse(item.shutdown_date) <= Date.now()))) &&
       (!preset || !item.architecture?.output_modalities || item.architecture.output_modalities.includes("text"))
     ).map((item) => item.id || "");
-  return [...new Set(models.filter(model => model && !isEmbeddingModel(model)))].sort((a, b) =>
-    a.localeCompare(b)
-  );
+  return catalog(models, embeddingModels);
+}
+
+export async function fetchProviderModels(profile: ModelProviderProfile): Promise<string[]> {
+  return (await fetchProviderModelCatalog(profile)).chatModels;
 }

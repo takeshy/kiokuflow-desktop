@@ -469,6 +469,10 @@ export interface MCPStdioStartRequest {
 }
 
 interface WailsAppApi {
+  EncryptionUnlockSupported: () => Promise<boolean>;
+  RememberEncryptionUnlock: (password: string, profile: string, days: number) => Promise<void>;
+  RestoreEncryptionUnlock: (profile: string) => Promise<{ password: string; expiresAt: number } | null>;
+  ForgetEncryptionUnlock: () => Promise<void>;
   VerifyJev: (apiKey: string, useOpenRouter: boolean) => Promise<void>;
   VerifyRAGReranker: (provider: string, apiKey: string, useOpenRouter: boolean) => Promise<void>;
   GetWorkspaceState: () => Promise<WorkspaceState>;
@@ -816,6 +820,24 @@ function appApi(): WailsAppApi | null {
 
 export function hasWailsBackend(): boolean {
   return appApi() !== null;
+}
+
+export async function encryptionUnlockSupported(): Promise<boolean> {
+  return await appApi()?.EncryptionUnlockSupported() ?? false;
+}
+
+export async function rememberEncryptionUnlock(password: string, profile: string, days: number): Promise<void> {
+  const api = appApi();
+  if (!api) throw new Error("Remembering encryption unlocks requires the desktop app.");
+  await api.RememberEncryptionUnlock(password, profile, days);
+}
+
+export async function restoreEncryptionUnlock(profile: string): Promise<{ password: string; expiresAt: number } | null> {
+  return await appApi()?.RestoreEncryptionUnlock(profile) ?? null;
+}
+
+export async function forgetEncryptionUnlock(): Promise<void> {
+  await appApi()?.ForgetEncryptionUnlock();
 }
 
 export async function getWorkspaceState(): Promise<WorkspaceState> {

@@ -23,7 +23,7 @@ Local RAGは、ローカルファイル群を意味検索できるようにす�
 
 embedding生成には設定したproviderのcredentialが必要で、GeminiやVertex AIなど外部embedding APIを使う場合、対象テキストがそのサービスへ送信されます。RAGは原文そのものを変更しません。少数ファイルを確実に渡す用途は `@file`、curatedな定義や手順には[OKF](/features/okf-knowledge.md)が適しています。
 
-Gemini、OpenAI、OpenAI互換APIの接続をAI設定に登録すると、Chat用モデルのチェックに関係なくRAGのembedding providerとして選べます。Vertex AIもChat用モデルの選択に依存しません。embedding modelはRAG設定ごとに指定します。AI設定のモデル一覧はChat用で、embedding modelのチェックは不要です。OpenAI互換APIはembedding対応の接続先を使ってください。保存したAPIキーがロック中の場合は、`Settings > Encryption`からUnlockしてからSyncや検索を実行します。
+Gemini、OpenAI、OpenAI互換APIの接続をAI設定に登録すると、Chat用モデルのチェックに関係なくRAGのembedding providerとして選べます。Vertex AIもChat用モデルの選択に依存しません。**Embedding model** は、選択したAPI providerの候補を表示するプルダウンです。更新ボタンで一覧を再取得でき、一覧にないIDは **Other model…** から指定できます。保存済みのモデルIDは一覧にない場合も保持します。AI設定のチェックリストにはChat用モデルだけを表示し、embedding modelはすべてRAG側の候補として扱います。OpenAI互換APIはembedding対応の接続先を使ってください。保存したAPIキーがロック中の場合は、`Settings > Encryption`からUnlockしてからSyncや検索を実行します。
 
 # 既定値と処理の単位
 

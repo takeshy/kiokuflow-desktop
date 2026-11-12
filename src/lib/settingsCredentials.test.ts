@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 import { configureOrUnlockHistoryEncryption } from "./historyEncryption";
-import { lockSettingsCredentials } from "./settingsCredentials";
+import { hasLockedSettingsCredentials, lockSettingsCredentials } from "./settingsCredentials";
 import { CHAT_SETTINGS_KEY, defaultChatSettings, loadChatSettings, newModelProfile, saveChatSettings, selectModelProfile, unlockChatSettings, updateModelProfile } from "../llm/settings";
 
 test("API credentials migrate to the common public key, survive locked saves and unlock together", async () => {
@@ -16,6 +16,7 @@ test("API credentials migrate to the common public key, survive locked saves and
     const second = { ...newModelProfile("gemini"), id: "second", apiKey: "second-secret" };
     const settings = selectModelProfile({ ...defaultChatSettings, modelProfiles: [first, second], jevApiKey: "jev-secret", speech: { ...defaultChatSettings.speech, apiKey: "speech-secret" } }, first.id);
     await saveChatSettings(settings);
+    expect(hasLockedSettingsCredentials(loadChatSettings())).toBe(false);
     values.set("llm-hub:chat-settings", JSON.stringify(settings));
     await configureOrUnlockHistoryEncryption("common-password");
     await saveChatSettings(settings);
@@ -26,13 +27,18 @@ test("API credentials migrate to the common public key, survive locked saves and
 
     // Simulate a cold session. Unrelated edits must retain the locked keys.
     lockSettingsCredentials();
+    expect(hasLockedSettingsCredentials(loadChatSettings())).toBe(true);
+    expect(hasLockedSettingsCredentials({ encryptedCredentials: {} })).toBe(false);
+    expect(hasLockedSettingsCredentials({ encryptedCredentials: { removed: "" } })).toBe(false);
     expect(loadChatSettings().apiKey).toBe("");
     expect(loadChatSettings().jevApiKey).toBe("");
     const locked = loadChatSettings();
     await saveChatSettings({ ...locked, systemPrompt: "updated while locked" });
     await expect(configureOrUnlockHistoryEncryption("wrong-password")).rejects.toThrow("incorrect");
+    expect(hasLockedSettingsCredentials(loadChatSettings())).toBe(true);
     await configureOrUnlockHistoryEncryption("common-password");
     let unlocked = await unlockChatSettings();
+    expect(hasLockedSettingsCredentials(unlocked)).toBe(false);
     expect(unlocked.apiKey).toBe("first-secret");
     expect(unlocked.jevApiKey).toBe("jev-secret");
     expect(unlocked.speech.apiKey).toBe("speech-secret");

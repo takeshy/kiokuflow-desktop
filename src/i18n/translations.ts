@@ -5,6 +5,24 @@ export type Language = "en" | "ja";
 export type LanguageSetting = Language | "system";
 
 export interface TranslationStrings {
+  "credentials.unlockTitle": string;
+  "credentials.unlockMessage": string;
+  "credentials.password": string;
+  "credentials.unlock": string;
+  "credentials.unlocking": string;
+  "credentials.wrongPassword": string;
+  "credentials.unlockFailed": string;
+  "credentials.cancelHint": string;
+  "credentials.remember": string;
+  "credentials.rememberSession": string;
+  "credentials.rememberDay": string;
+  "credentials.rememberWeek": string;
+  "credentials.rememberMonth": string;
+  "credentials.rememberHint": string;
+  "credentials.rememberFailed": string;
+  "credentials.rememberSaved": string;
+  "credentials.rememberCleared": string;
+  "credentials.rememberNextUnlock": string;
   "speech.error.project": string;
   "speech.error.url": string;
   "speech.error.duration": string;
@@ -452,6 +470,24 @@ export interface TranslationStrings {
 }
 
 const en: TranslationStrings = {
+  "credentials.unlockTitle": "Unlock saved API keys",
+  "credentials.unlockMessage": "Your saved API keys are encrypted and locked. Enter your encryption password to use them.",
+  "credentials.password": "Encryption password",
+  "credentials.unlock": "Unlock",
+  "credentials.unlocking": "Unlocking…",
+  "credentials.wrongPassword": "The password is incorrect. Please try again.",
+  "credentials.unlockFailed": "Saved API keys could not be unlocked. Try again from Settings > Encryption.",
+  "credentials.cancelHint": "If you cancel, your keys stay saved and locked. You can unlock them later in Settings > Encryption.",
+  "credentials.remember": "Keep unlocked on this device",
+  "credentials.rememberSession": "Until the app closes",
+  "credentials.rememberDay": "1 day",
+  "credentials.rememberWeek": "7 days",
+  "credentials.rememberMonth": "30 days",
+  "credentials.rememberHint": "Windows protects the saved unlock for your user account. The period starts when you unlock or change it; restarting does not extend it. Choosing “Until the app closes” removes the saved unlock.",
+  "credentials.rememberFailed": "Could not save the unlock on this device. Try again, or choose “Until the app closes”.",
+  "credentials.rememberSaved": "The unlock is remembered for the selected period.",
+  "credentials.rememberCleared": "The saved unlock was removed. Your API keys remain encrypted and available for this session.",
+  "credentials.rememberNextUnlock": "This period will apply the next time you unlock with your password.",
   "speech.error.project": "Set the Vertex AI Project ID.",
   "speech.error.url":
     "Use an HTTP(S) base URL without credentials, a query, or a fragment.",
@@ -946,6 +982,24 @@ const en: TranslationStrings = {
 };
 
 const ja: TranslationStrings = {
+  "credentials.unlockTitle": "保存済みAPIキーのロック解除",
+  "credentials.unlockMessage": "保存済みのAPIキーは暗号化され、ロックされています。使用するには暗号化パスワードを入力してください。",
+  "credentials.password": "暗号化パスワード",
+  "credentials.unlock": "ロック解除",
+  "credentials.unlocking": "ロック解除中…",
+  "credentials.wrongPassword": "パスワードが違います。もう一度入力してください。",
+  "credentials.unlockFailed": "APIキーのロックを解除できませんでした。設定の「Encryption」から再度お試しください。",
+  "credentials.cancelHint": "キャンセルしてもAPIキーは保存されたままです。後で設定の「Encryption」からロックを解除できます。",
+  "credentials.remember": "この端末でロック解除を保持",
+  "credentials.rememberSession": "この起動中のみ",
+  "credentials.rememberDay": "1日間",
+  "credentials.rememberWeek": "7日間",
+  "credentials.rememberMonth": "30日間",
+  "credentials.rememberHint": "Windowsのユーザーアカウントで保護します。解除・期間変更からの有効期間で、再起動では延長しません。「この起動中のみ」で保持情報を削除します。",
+  "credentials.rememberFailed": "この端末にロック解除状態を保持できませんでした。再度試すか、「この起動中のみ」を選んでください。",
+  "credentials.rememberSaved": "選択した期間、ロック解除状態を保持します。",
+  "credentials.rememberCleared": "保持情報を削除しました。APIキーは暗号化されたまま保存され、この起動中は引き続き使用できます。",
+  "credentials.rememberNextUnlock": "次回パスワードでロックを解除したときに、この保持期間を適用します。",
   "speech.error.project": "Vertex AIのProject IDを設定してください。",
   "speech.error.url":
     "Base URLには認証情報・クエリ・フラグメントを含まないHTTP(S) URLを指定してください。",

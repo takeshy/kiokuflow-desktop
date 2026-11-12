@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Check, Loader2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { fetchProviderModels } from "./modelProviders";
-import { compatibleProvider, compatibleProviderPresets, isEmbeddingModel } from "./providerPresets";
+import { fetchProviderModelCatalog } from "./modelProviders";
+import { compatibleProvider, compatibleProviderPresets, isProfileEmbeddingModel } from "./providerPresets";
 import {
   type ChatSettings,
   type LocalLLMFramework,
@@ -25,8 +25,8 @@ export function ModelProviderManager(
   const synced = syncActiveModelProfile(settings);
   const chatProfiles = synced.modelProfiles.map(profile => ({
     ...profile,
-    availableModels: profile.availableModels.filter(model => !isEmbeddingModel(model)),
-    enabledModels: profile.enabledModels.filter(model => !isEmbeddingModel(model)),
+    availableModels: profile.availableModels.filter(model => !isProfileEmbeddingModel(profile, model)),
+    enabledModels: profile.enabledModels.filter(model => !isProfileEmbeddingModel(profile, model)),
   }));
   const latest = useRef(synced);
   latest.current = synced;
@@ -62,17 +62,18 @@ export function ModelProviderManager(
     setBusy(profile.id);
     setError("");
     try {
-      const models = await fetchProviderModels(profile);
+      const { chatModels: models, embeddingModels } = await fetchProviderModelCatalog(profile);
       const current = latest.current.modelProfiles.find(item => item.id === profile.id);
       if (!current || ["endpoint", "apiKey", "provider", "username", "password", "localFramework"].some(key => current[key as keyof ModelProviderProfile] !== profile[key as keyof ModelProviderProfile])) return;
       const enabledModels = current.enabledModels.filter(model => models.includes(model));
       onChange(updateModelProfile(latest.current, profile.id, {
         modelsVerified: true,
         availableModels: models,
+        embeddingModels,
         enabledModels: enabledModels.length ? enabledModels : models.slice(0, 1),
         model: enabledModels.includes(current.model) ? current.model : enabledModels[0] || models[0] || "",
       }));
-      if (!models.length) setError("No models were returned by this provider.");
+      if (!models.length && !embeddingModels.length) setError("No models were returned by this provider.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -128,14 +129,14 @@ export function ModelProviderManager(
                     model{profile.enabledModels.length === 1 ? "" : "s"}
                   </small>
                 </span>
-                <i className={profile.enabledModels.length ? "configured" : ""}>
+                <i className={profile.enabledModels.length || profile.embeddingModels?.length ? "configured" : ""}>
                   {profile.enabledModels.length
                     ? (
                       <>
                         <Check size={10} />Ready
                       </>
                     )
-                    : "Configure"}
+                    : profile.embeddingModels?.length ? "RAG ready" : "Configure"}
                 </i>
               </button>
               <button
