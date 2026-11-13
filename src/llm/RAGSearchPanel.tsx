@@ -1,6 +1,7 @@
 import { RerankingSelect } from "./RerankingSelect";
 import type { RerankingSettingsSection } from "./rerankingCredentials";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useI18n } from "../i18n/context";
 import {
   Check,
   ChevronDown,
@@ -97,6 +98,8 @@ export function RAGSearchPanel({
   onOpenFile: (file: FileRef) => void;
   onChatWithResults: (files: ChatFile[]) => void;
 }) {
+  const { t: tr } = useI18n();
+  const configId = useId();
   const names = Object.keys(settings.ragSettings);
   const [selectedName, setSelectedName] = useState(() =>
     settings.selectedRagSetting ?? names[0] ?? ""
@@ -541,9 +544,12 @@ export function RAGSearchPanel({
         <button
           type="button"
           onClick={() => setShowConfig((value) => !value)}
-          title="Search and index settings"
+          title={tr("rag.searchSettings")}
+          aria-expanded={showConfig}
+          aria-controls={configId}
         >
           <Settings2 size={16} />
+          {tr("rag.searchSettings")}
         </button>
       </header>
       <div className="rag-search-controls">
@@ -563,7 +569,56 @@ export function RAGSearchPanel({
           </select>
         </div>
         {showConfig && selectedSetting && (
-          <div className="rag-search-inline-config">
+          <div className="rag-search-inline-config" id={configId} role="region" aria-label={tr("rag.searchSettings")}>
+            <div className="rag-search-parameters">
+              <label className="settings-check"><input type="checkbox" checked={hybridSearch} onChange={event => setHybridSearch(event.target.checked)} />Hybrid search (BM25 + vector)</label>
+              {selectedSetting && <RerankingSelect settings={settings} rag={selectedSetting} ragName={selectedName} value={rerankProvider} onChange={setRerankProvider} onOpenSettings={onOpenSettings} />}
+              <label className="settings-check"><input type="checkbox" checked={untilMatch} disabled={rerankProvider === "off"} onChange={event => setUntilMatch(event.target.checked)} />Search until a match</label>
+              <label>
+                Top K<input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={topK}
+                  onChange={(event) =>
+                    setTopK(
+                      Math.max(1, Math.min(20, Math.trunc(Number(event.target.value)) || 1)),
+                    )}
+                />
+              </label>
+              <label>
+                Score<input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={threshold}
+                  onChange={(event) =>
+                    setThreshold(
+                      Math.max(0, Math.min(1, Number(event.target.value) || 0)),
+                    )}
+                />
+              </label>
+              <label>
+                Ext.<input
+                  value={extensions}
+                  placeholder="md, pdf"
+                  onChange={(event) => setExtensions(event.target.value)}
+                />
+              </label>
+            </div>
+            <label>
+              {tr("rag.refineModel")}
+              <select
+                value={refineModel}
+                onChange={(event) => setRefineModel(event.target.value)}
+              >
+                <option value="">AI model for suggestions/refine</option>
+                {models.map((model) => (
+                  <option key={model.key} value={model.key}>{model.label}</option>
+                ))}
+              </select>
+            </label>
             <label>
               Chunk size<input
                 type="number"
@@ -677,43 +732,6 @@ export function RAGSearchPanel({
             </button>
           </div>
         )}
-        <div className="rag-search-parameters">
-          <label className="settings-check"><input type="checkbox" checked={hybridSearch} onChange={event => setHybridSearch(event.target.checked)} />Hybrid search (BM25 + vector)</label>
-          {selectedSetting && <RerankingSelect settings={settings} rag={selectedSetting} ragName={selectedName} value={rerankProvider} onChange={setRerankProvider} onOpenSettings={onOpenSettings} />}
-          <label className="settings-check"><input type="checkbox" checked={untilMatch} disabled={rerankProvider === "off"} onChange={event => setUntilMatch(event.target.checked)} />Search until a match</label>
-          <label>
-            Top K<input
-              type="number"
-              min="1"
-              max="20"
-              value={topK}
-              onChange={(event) =>
-                setTopK(
-                  Math.max(1, Math.min(20, Math.trunc(Number(event.target.value)) || 1)),
-                )}
-            />
-          </label>
-          <label>
-            Score<input
-              type="number"
-              min="0"
-              max="1"
-              step="0.05"
-              value={threshold}
-              onChange={(event) =>
-                setThreshold(
-                  Math.max(0, Math.min(1, Number(event.target.value) || 0)),
-                )}
-            />
-          </label>
-          <label>
-            Ext.<input
-              value={extensions}
-              placeholder="md, pdf"
-              onChange={(event) => setExtensions(event.target.value)}
-            />
-          </label>
-        </div>
         <div className="rag-search-query">
           <textarea
             rows={2}
@@ -741,15 +759,6 @@ export function RAGSearchPanel({
       <div className="rag-search-results">
         {results.length > 0 && (
           <div className="rag-search-filter-stack">
-            <select
-              value={refineModel}
-              onChange={(event) => setRefineModel(event.target.value)}
-            >
-              <option value="">AI model for suggestions/refine</option>
-              {models.map((model) => (
-                <option key={model.key} value={model.key}>{model.label}</option>
-              ))}
-            </select>
             {filters.map((filter) => (
               <div key={filter.id} className="rag-search-filter-row">
                 <input

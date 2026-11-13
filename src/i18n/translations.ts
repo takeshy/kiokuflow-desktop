@@ -5,6 +5,8 @@ export type Language = "en" | "ja";
 export type LanguageSetting = Language | "system";
 
 export interface TranslationStrings {
+  "rag.searchSettings": string;
+  "rag.refineModel": string;
   "credentials.unlockTitle": string;
   "credentials.unlockMessage": string;
   "credentials.password": string;
@@ -470,6 +472,8 @@ export interface TranslationStrings {
 }
 
 const en: TranslationStrings = {
+  "rag.searchSettings": "Search settings",
+  "rag.refineModel": "AI model for suggestions/refine",
   "credentials.unlockTitle": "Unlock saved API keys",
   "credentials.unlockMessage": "Your saved API keys are encrypted and locked. Enter your encryption password to use them.",
   "credentials.password": "Encryption password",
@@ -982,6 +986,8 @@ const en: TranslationStrings = {
 };
 
 const ja: TranslationStrings = {
+  "rag.searchSettings": "検索設定",
+  "rag.refineModel": "候補提案・文章調整に使うAIモデル",
   "credentials.unlockTitle": "保存済みAPIキーのロック解除",
   "credentials.unlockMessage": "保存済みのAPIキーは暗号化され、ロックされています。使用するには暗号化パスワードを入力してください。",
   "credentials.password": "暗号化パスワード",

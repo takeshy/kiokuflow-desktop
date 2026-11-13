@@ -5326,6 +5326,13 @@ body.resizing-side-pane * {
   color: var(--muted);
   cursor: pointer;
   padding: 4px;
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.rag-search-header > button[aria-expanded="true"] {
+  background: var(--panel-subtle);
+  color: var(--text);
 }
 
 .rag-search-controls {
@@ -5439,6 +5446,8 @@ body.resizing-side-pane * {
   border-radius: 7px;
   background: var(--panel-subtle);
   padding: 8px;
+  max-height: min(45vh, 360px);
+  overflow-y: auto;
 }
 .rag-search-inline-config > label {
   display: grid;
@@ -5446,8 +5455,9 @@ body.resizing-side-pane * {
   color: var(--text-muted);
   font-size: .7rem;
 }
-.rag-search-inline-config input,
+.rag-search-inline-config input:not([type="checkbox"]),
 .rag-search-inline-config textarea,
+.rag-search-inline-config select:not(.reranking-select),
 .rag-search-filter-stack select {
   width: 100%;
   border: 1px solid var(--border);
