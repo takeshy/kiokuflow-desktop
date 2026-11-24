@@ -3,6 +3,7 @@ import { useI18n } from "../i18n/context";
 import { speechHTTPRequest } from "../lib/wailsBackend";
 import type { SpeechSettings } from "./settings";
 import { speechErrorMessage } from "./speechErrors";
+import { openSpeechMicrophone } from "./speechMicrophone";
 import { watchSpeechSilence } from "./speechSilence";
 import {
   recordingsToWav,
@@ -348,7 +349,7 @@ export function useRecordedSpeech(options: ChatSpeechOptions) {
     setStatus("starting");
     try {
       validateSpeechSettings(current.settings);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await openSpeechMicrophone(current.settings.microphoneId);
       if (active.current !== current) {
         stream.getTracks().forEach((track) => track.stop());
         return;

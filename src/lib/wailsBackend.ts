@@ -516,6 +516,7 @@ interface WailsAppApi {
     path: string,
   ) => Promise<DirectoryFileEntry[]>;
   ReadWorkspaceFile: (path: string) => Promise<LocalFileResult>;
+  ReadLiveWorkspaceTool: (workspace: string, name: string, argumentsJSON: string) => Promise<unknown>;
   WriteWorkspaceFile: (path: string, content: string) => Promise<void>;
   WriteWorkspaceBinaryFile: (
     path: string,
@@ -922,6 +923,16 @@ export async function readWorkspaceFile(
 ): Promise<LocalFileResult | null> {
   if (!path) return null;
   return await appApi()?.ReadWorkspaceFile(path) ?? null;
+}
+
+export async function readLiveWorkspaceTool(
+  workspace: string,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  const api = appApi();
+  if (!api) throw new Error("Live Workspace tools require the desktop app.");
+  return await api.ReadLiveWorkspaceTool(workspace, name, JSON.stringify(args));
 }
 
 export async function openLocalFileDefault(path: string): Promise<void> {

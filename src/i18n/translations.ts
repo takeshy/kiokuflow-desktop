@@ -47,11 +47,46 @@ export interface TranslationStrings {
   "speech.error.auth": string;
   "speech.error.server": string;
 
+  "live.title": string;
+  "live.close": string;
+  "live.provider": string;
+  "live.model": string;
+  "live.voice": string;
+  "live.ready": string;
+  "live.connecting": string;
+  "live.connected": string;
+  "live.stopped": string;
+  "live.start": string;
+  "live.end": string;
+  "live.back": string;
+  "live.mute": string;
+  "live.unmute": string;
+  "live.notice": string;
+  "live.keyRequired": string;
+  "live.context": string;
+  "live.fileAccess": string;
+  "live.fileSearch": string;
+  "live.webSearch": string;
+  "live.webSearchHistory": string;
+  "live.searchSuggestions": string;
+  "live.ragPending": string;
+  "live.ragNotRun": string;
+  "live.ragResults": string;
+  "live.ragFailed": string;
+  "live.rag": string;
+  "live.noRag": string;
+  "live.transcript": string;
+  "live.you": string;
+  "live.playAudio": string;
   "speech.browser": string;
   "speech.browserHint": string;
   "speech.api": string;
   "speech.apiHint": string;
-  "speech.noMic": string;
+  "speech.error.microphoneUnavailable": string;
+  "speech.error.selectedMicrophone": string;
+  "speech.error.noMicrophone": string;
+  "speech.error.microphonePermission": string;
+  "speech.error.microphoneBusy": string;
   "speech.connected": string;
   "speech.title": string;
   "speech.subtitle": string;
@@ -62,6 +97,8 @@ export interface TranslationStrings {
   "speech.micLanguage": string;
   "speech.mic": string;
   "speech.defaultMic": string;
+  "speech.savedMicrophone": string;
+  "speech.microphoneListHint": string;
   "speech.testMic": string;
   "speech.language": string;
   "speech.languageAuto": string;
@@ -524,11 +561,46 @@ const en: TranslationStrings = {
   "speech.error.server":
     "Check the base URL, model, and supported server formats.",
 
+  "live.title": "Live voice conversation",
+  "live.close": "Close",
+  "live.provider": "Provider",
+  "live.model": "Model",
+  "live.voice": "Voice",
+  "live.ready": "Ready to start",
+  "live.connecting": "Connecting…",
+  "live.connected": "Conversation in progress",
+  "live.stopped": "Conversation stopped",
+  "live.start": "Start conversation",
+  "live.end": "End conversation",
+  "live.back": "Return to chat",
+  "live.mute": "Mute microphone",
+  "live.unmute": "Unmute microphone",
+  "live.notice": "The reply voice is AI-generated. API charges apply.",
+  "live.keyRequired": "Add or unlock an API key for Gemini or OpenAI in AI settings.",
+  "live.context": "Use the current chat as conversation context",
+  "live.fileAccess": "Read Workspace files (read-only)",
+  "live.fileSearch": "Read and search Workspace files (read-only)",
+  "live.webSearch": "Web search (Google)",
+  "live.webSearchHistory": "The transcript is shown during this call and is not saved to chat history.",
+  "live.searchSuggestions": "Google Search suggestions",
+  "live.ragPending": "Searching the RAG index…",
+  "live.ragNotRun": "RAG search has not run yet.",
+  "live.ragResults": "RAG results",
+  "live.ragFailed": "RAG search failed",
+  "live.rag": "RAG index",
+  "live.noRag": "Do not use",
+  "live.transcript": "Conversation transcript",
+  "live.you": "You",
+  "live.playAudio": "Enable audio playback",
   "speech.browser": "Browser",
   "speech.browserHint": "Transcribe as you speak",
   "speech.api": "Speech recognition API",
   "speech.apiHint": "OpenAI / Google Cloud and more",
-  "speech.noMic": "The microphone is unavailable in this environment.",
+  "speech.error.microphoneUnavailable": "The microphone is unavailable in this environment.",
+  "speech.error.selectedMicrophone": "The selected microphone is unavailable. Reconnect it or choose another microphone in Voice input settings.",
+  "speech.error.noMicrophone": "No microphone was found. Connect a microphone and check your system input settings.",
+  "speech.error.microphonePermission": "Microphone access was denied. Allow microphone access in your system settings.",
+  "speech.error.microphoneBusy": "The microphone could not be opened. Check whether another app is using it and review your system input settings.",
   "speech.connected":
     "Connected. Audio upload and transcription response verified.",
   "speech.title": "Voice input",
@@ -541,6 +613,8 @@ const en: TranslationStrings = {
   "speech.micLanguage": "Microphone and language",
   "speech.mic": "Microphone",
   "speech.defaultMic": "System default microphone",
+  "speech.savedMicrophone": "Saved microphone (missing from the list)",
+  "speech.microphoneListHint": "Select Test microphone and allow access to refresh the device list.",
   "speech.testMic": "Test microphone",
   "speech.language": "Recognition language",
   "speech.browserLanguageHint":
@@ -1037,11 +1111,46 @@ const ja: TranslationStrings = {
   "speech.error.server":
     "Base URL・Model・サーバーの対応形式を確認してください。",
 
+  "live.title": "ライブ音声会話",
+  "live.close": "閉じる",
+  "live.provider": "プロバイダー",
+  "live.model": "モデル",
+  "live.voice": "声",
+  "live.ready": "開始できます",
+  "live.connecting": "接続中…",
+  "live.connected": "会話中",
+  "live.stopped": "会話が停止しました",
+  "live.start": "会話を開始",
+  "live.end": "会話を終了",
+  "live.back": "チャットへ戻る",
+  "live.mute": "マイクをミュート",
+  "live.unmute": "マイクのミュートを解除",
+  "live.notice": "返信の音声は AI が生成します。API 利用料がかかります。",
+  "live.keyRequired": "AI 設定で Gemini または OpenAI の API キーを追加するか、ロックを解除してください。",
+  "live.context": "現在のチャットを会話の背景として使う",
+  "live.fileAccess": "Workspace のファイルを参照する（読み取り専用）",
+  "live.fileSearch": "Workspace のファイルを参照・検索する（読み取り専用）",
+  "live.webSearch": "Web 検索（Google）",
+  "live.webSearchHistory": "この通話の文字起こしは通話中に表示し、チャット履歴には保存しません。",
+  "live.searchSuggestions": "Google 検索の候補",
+  "live.ragPending": "RAG インデックスを検索中…",
+  "live.ragNotRun": "RAG はまだ検索していません。",
+  "live.ragResults": "RAG の検索結果",
+  "live.ragFailed": "RAG の検索に失敗しました",
+  "live.rag": "RAG インデックス",
+  "live.noRag": "使用しない",
+  "live.transcript": "会話の文字起こし",
+  "live.you": "あなた",
+  "live.playAudio": "音声を再生できるようにする",
   "speech.browser": "ブラウザ",
   "speech.browserHint": "話しながら文字に",
   "speech.api": "音声認識API",
   "speech.apiHint": "OpenAI / Google Cloud など",
-  "speech.noMic": "この環境ではマイクを利用できません。",
+  "speech.error.microphoneUnavailable": "この環境ではマイクを利用できません。",
+  "speech.error.selectedMicrophone": "選択したマイクを使えません。再接続するか、音声入力の設定で別のマイクを選んでください。",
+  "speech.error.noMicrophone": "マイクが見つかりません。マイクを接続し、OSの入力設定を確認してください。",
+  "speech.error.microphonePermission": "マイクへのアクセスが拒否されました。OSの設定でマイクへのアクセスを許可してください。",
+  "speech.error.microphoneBusy": "マイクを開けませんでした。他のアプリが使用していないか確認し、OSの入力設定を見直してください。",
   "speech.connected":
     "接続できました。音声の送信と文字起こし応答を確認しました。",
   "speech.title": "音声入力",
@@ -1054,6 +1163,8 @@ const ja: TranslationStrings = {
   "speech.micLanguage": "マイクと言語",
   "speech.mic": "マイク",
   "speech.defaultMic": "システムの既定のマイク",
+  "speech.savedMicrophone": "保存済みのマイク（一覧に表示されていません）",
+  "speech.microphoneListHint": "「マイクを確認」を押し、アクセスを許可すると機器一覧が更新されます。",
   "speech.testMic": "マイクを確認",
   "speech.language": "認識する言語",
   "speech.browserLanguageHint":

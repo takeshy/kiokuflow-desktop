@@ -1,5 +1,5 @@
-import { APP_VERSION } from "../appIdentity";
-import { applyHostPatches } from "../lib/hostPatches";
+import { APP_ID, APP_VERSION } from "../appIdentity";
+import { applyHostPatches, hostPatchPaths } from "../lib/hostPatches";
 import {
   externalHTTPRequest,
   installPluginFiles,
@@ -8,7 +8,7 @@ import {
 } from "../lib/wailsBackend";
 import type { PluginConfig, PluginManifest, PluginPermission } from "./types";
 
-export const PLUGIN_HOST_ID = "gemihub-desktop";
+export const PLUGIN_HOST_ID = APP_ID;
 export const PLUGIN_HOST_VERSION = APP_VERSION;
 const OFFICIAL_PLUGIN_OWNERS = new Set(["takeshy"]);
 
@@ -330,7 +330,7 @@ export async function installPluginRelease(
       ? ["styles.css"]
       : []),
   ];
-  const patchNames = manifest.hostPatches?.[PLUGIN_HOST_ID] ?? [];
+  const patchNames = hostPatchPaths(manifest, PLUGIN_HOST_ID);
   const uniqueNames = [...new Set([...requiredNames, ...patchNames])];
   const downloaded = await Promise.all(uniqueNames.map(async (name) => {
     const assetName = releaseAssetFileName(name);

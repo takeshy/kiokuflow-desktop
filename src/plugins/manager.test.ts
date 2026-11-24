@@ -7,6 +7,7 @@ import {
 import {
   installPluginRelease,
   normalizePluginRepo,
+  PLUGIN_HOST_ID,
   pluginRecommendation,
   previewPluginRelease,
 } from "./manager.ts";
@@ -104,6 +105,7 @@ test("plugin release install validates and applies the workspace patch", async (
     const result = await installPluginRelease("owner/repo", undefined, preview);
     assertEquals(result.config.enabled, false);
     assertEquals(result.config.source, "github");
+    assertEquals(result.metadata.host, "kiokuflow-desktop");
     assertEquals(mock.installed[0].files["main.js"], "workspace\n");
     assertEquals("patches/workspace.patch" in mock.installed[0].files, false);
     assertEquals(
@@ -114,6 +116,26 @@ test("plugin release install validates and applies the workspace patch", async (
       JSON.parse(mock.installed[0].metadata).patches[0].sha256.length,
       64,
     );
+  } finally {
+    runtime.window = previous;
+  }
+});
+
+test("plugin installation prefers KiokuFlow Desktop patches over the former host", async () => {
+  const runtime = globalThis as unknown as { window?: { go?: unknown } };
+  const previous = runtime.window;
+  const mock = mockRuntime(pluginManifest({
+    hostPatches: {
+      "gemihub-desktop": ["old.patch"],
+      [PLUGIN_HOST_ID]: ["patches/workspace.patch"],
+    },
+  }));
+  runtime.window = { go: { main: { App: mock.backend } } };
+  try {
+    const result = await installPluginRelease("owner/repo");
+    assertEquals(result.metadata.host, "kiokuflow-desktop");
+    assertEquals(result.metadata.patches.map(({ name }) => name), ["patches/workspace.patch"]);
+    assertEquals(mock.installed[0].files["main.js"], "workspace\n");
   } finally {
     runtime.window = previous;
   }

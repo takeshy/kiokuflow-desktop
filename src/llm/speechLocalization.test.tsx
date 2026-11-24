@@ -56,6 +56,26 @@ test("Japanese speech settings still use Japanese labels", () => {
   assertStringIncludes(html, 'value="以上"');
 });
 
+test("the microphone selector preserves a missing saved device for recording and Live", () => {
+  for (const provider of ["browser", "openai-compatible", "live"] as const) {
+    const html = renderToStaticMarkup(
+      <I18nProvider language="en">
+        <SpeechSettingsPanel
+          settings={{ ...defaultChatSettings.speech, provider, microphoneId: "usb-mic" }}
+          aiSettings={defaultChatSettings}
+          onChange={() => {}}
+        />
+      </I18nProvider>,
+    );
+    expect(html).toContain("System default microphone");
+    if (provider === "browser") {
+      expect(html).not.toContain('value="usb-mic"');
+    } else {
+      expect(html).toContain('value="usb-mic" selected="">Saved microphone (missing from the list)');
+    }
+  }
+});
+
 test("Japanese microphone send phrases default to 以上 across input modes and legacy settings", () => {
   for (const provider of ["browser", "openai-compatible", "live"] as const) {
     for (const sendPhrase of ["over", "over, オーバー"]) {

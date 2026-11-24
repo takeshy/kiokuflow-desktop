@@ -1,10 +1,17 @@
+import { APP_ID, LEGACY_DESKTOP_HOST_ID } from "../appIdentity";
+
 export interface HostPatchFile {
   relativePath: string;
   content: string;
 }
-
 export interface HostPatchManifest {
   hostPatches?: Record<string, string[]>;
+}
+
+export function hostPatchPaths(manifest: HostPatchManifest, hostID: string): string[] {
+  const patches = manifest.hostPatches;
+  return patches?.[hostID] ??
+    (hostID === APP_ID ? patches?.[LEGACY_DESKTOP_HOST_ID] : undefined) ?? [];
 }
 
 interface PatchHunk {
@@ -136,7 +143,7 @@ export function applyHostPatches(
   hostID: string,
   options: ApplyHostPatchesOptions = {},
 ): { files: HostPatchFile[]; applied: string[]; error?: string } {
-  const patchPaths = manifest.hostPatches?.[hostID] ?? [];
+  const patchPaths = hostPatchPaths(manifest, hostID);
   if (!patchPaths.length) return { files, applied: [] };
   const nextFiles = files.map((file) => ({ ...file, relativePath: file.relativePath.replaceAll("\\", "/") }));
   const protectedPaths = new Set((options.protectedPaths ?? []).map((path) => `${rootID}/${path.replace(/^\/+/, "")}`));

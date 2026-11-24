@@ -6,12 +6,14 @@ import {
   writeWorkspaceFile,
 } from "../lib/wailsBackend";
 import { applyHostPatches } from "../lib/hostPatches";
+import { APP_ID, LEGACY_DESKTOP_HOST_ID } from "../appIdentity";
 
 export const OFFICIAL_SKILLS_REPO = "takeshy/llm-hub-skills";
-export const SKILLS_HOST_ID = "gemihub-desktop";
+export const SKILLS_HOST_ID = APP_ID;
 export const SKILLS_HOST_VERSION = "0.1.0";
 const SKILLS_COMPATIBLE_HOST_IDS = new Set([
   SKILLS_HOST_ID,
+  LEGACY_DESKTOP_HOST_ID,
   "gemihub",
   "llm-hub",
 ]);
@@ -142,13 +144,18 @@ function compatible(
     const acceptedIDs = hostID === SKILLS_HOST_ID
       ? SKILLS_COMPATIBLE_HOST_IDS
       : new Set([hostID]);
-    const entry = entries.find((item) => item.id && acceptedIDs.has(item.id));
+    const entry = entries.find((item) => item.id === hostID) ??
+      (hostID === SKILLS_HOST_ID
+        ? entries.find((item) => item.id === LEGACY_DESKTOP_HOST_ID)
+        : undefined) ??
+      entries.find((item) => item.id && acceptedIDs.has(item.id));
     if (!entry) return false;
     // The workspace port implements the current Agent Skills contract. The
     // legacy llm-hub version floor describes that contract, not this app's
     // independent package version.
     const effectiveVersion =
-      hostID === SKILLS_HOST_ID && entry.id !== SKILLS_HOST_ID
+      hostID === SKILLS_HOST_ID && entry.id !== SKILLS_HOST_ID &&
+        entry.id !== LEGACY_DESKTOP_HOST_ID
         ? "999.0.0"
         : hostVersion;
     const minimum = entry.minVersion

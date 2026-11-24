@@ -54,6 +54,7 @@ import type {
 import { SkillWorkflowToolHost } from "../skills/SkillWorkflowToolHost";
 import { AgentPluginsSection } from "../agentPlugins/AgentPluginsSection";
 import { listAgentPlugins } from "../lib/wailsBackend";
+import { hostPatchPaths } from "../lib/hostPatches";
 import {
   loadInstalledAgentPlugin,
   mergeAgentPluginMcpServer,
@@ -738,7 +739,7 @@ export function PluginHost({
       });
       const permissions = preview.manifest.permissions?.join(", ") || "none";
       const patches =
-        preview.manifest.hostPatches?.[PLUGIN_HOST_ID]?.join(", ") ||
+        hostPatchPaths(preview.manifest, PLUGIN_HOST_ID).join(", ") ||
         "none";
       const existing = configs.find((config) =>
         config.id === preview.manifest.id

@@ -2,6 +2,7 @@ import { useI18n } from "../i18n/context";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
+  AudioLines,
   BookOpen,
   Bot,
   Brain,
@@ -32,6 +33,7 @@ import {
 } from "./settings";
 import { SpeechActivity } from "./SpeechActivity";
 import { useChatSpeech } from "./useChatSpeech";
+import { LiveConversation } from "./live/LiveConversation";
 import {
   buildReadAloudSystemPrompt,
   stopReadingAloud,
@@ -604,7 +606,7 @@ export function ChatPanel({
   workspaceBase: string;
   settings: ChatSettings;
   onSettingsChange: (settings: ChatSettings) => void;
-  activeFile: { path: string; content: string } | null;
+  activeFile: { path: string; content: string; file?: FileRef } | null;
   draftRequest?: { id: number; text: string };
   speechToggleRequest?: number | null;
   onSpeechToggleHandled?: (id: number) => void;
@@ -628,6 +630,7 @@ export function ChatPanel({
   const savedNotePathsRef = useRef(new Map<string, string>());
   const { t, language } = useI18n();
   const [activeID, setActiveID] = useState("");
+  const [liveTarget, setLiveTarget] = useState<{ workspace: string; sessionID: string } | null>(null);
   const [input, setInput] = useState("");
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -2245,11 +2248,13 @@ export function ChatPanel({
     settings,
     language,
   ]);
+  const liveOpen = liveTarget !== null && liveTarget.workspace === workspaceBase &&
+    liveTarget.sessionID === activeSession?.id && !sessionsLocked;
   const speech = useChatSpeech({
     input,
     settings: speechSettings,
     scope: `${workspaceBase}:${activeSession?.id ?? ""}`,
-    disabled: loading || !activeSession,
+    disabled: loading || liveOpen || !activeSession,
     onInput: (text) => {
       historyIndexRef.current = null;
       setInput(text);
@@ -2274,6 +2279,7 @@ export function ChatPanel({
   // being read aloud are the user's current turn and are left alone.
   const exitVoiceMode = () => setVoiceMode(false);
   const toggleSpeech = () => {
+    if (liveOpen) return;
     // Starting the microphone also starts a hands-free conversation: the
     // microphone reopens after each answer until the voice-mode badge is closed.
     // Stopping also leaves voice mode, so it never reopens after the user asked
@@ -2283,6 +2289,7 @@ export function ChatPanel({
   };
 
   useEffect(() => {
+    setLiveTarget(null);
     setVoiceMode(false);
     stopReadingAloud();
   }, [activeSession?.id, workspaceBase]);
@@ -2367,6 +2374,25 @@ export function ChatPanel({
 
   return (
     <section className="chat-panel">
+      {liveOpen && (
+        <LiveConversation
+          settings={settings}
+          workspace={workspaceBase}
+          messages={messages}
+          currentFile={activeFile}
+          onClose={(transcript) => {
+            setLiveTarget(null);
+            if (!transcript.length) return;
+            const firstUtterance = transcript.find((message) => message.role === "user");
+            updateSession(liveTarget.sessionID, (session) => ({
+              ...session,
+              title: !session.messages.length && firstUtterance ? titleFrom(firstUtterance.content) : session.title,
+              messages: [...session.messages, ...transcript],
+              updatedAt: Date.now(),
+            }));
+          }}
+        />
+      )}
       <header className="chat-panel-header">
         <div>
           <Bot size={17} />
@@ -2377,9 +2403,26 @@ export function ChatPanel({
               : settings.model}
           </span>
         </div>
-        <button type="button" onClick={onOpenSettings} title="Chat settings">
-          <Settings2 size={16} />
-        </button>
+        <div className="chat-header-actions">
+          <button
+            type="button"
+            disabled={loading || sessionsLocked || !activeSession || loadedHistoryScope !== (workspaceBase || "__session__")}
+            aria-label={t("live.title")}
+            title={t("live.title")}
+            onClick={() => {
+              if (!activeSession) return;
+              speech.stop();
+              setVoiceMode(false);
+              stopReadingAloud();
+              setLiveTarget({ workspace: workspaceBase, sessionID: activeSession.id });
+            }}
+          >
+            <AudioLines size={16} />
+          </button>
+          <button type="button" onClick={onOpenSettings} title="Chat settings">
+            <Settings2 size={16} />
+          </button>
+        </div>
       </header>
 
       <div className="chat-session-bar">
@@ -2569,6 +2612,7 @@ export function ChatPanel({
                   <MarkdownPreview
                     content={message.content}
                     isDark={isDark}
+                    scrollTables
                     onLinkClick={(href, event) => {
                       const ref = chatLocalFileRef(href, workspaceBase);
                       if (ref) {

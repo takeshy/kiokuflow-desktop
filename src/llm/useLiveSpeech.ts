@@ -8,6 +8,8 @@ import { createPCMCapture } from "./pcmCapture";
 import { speechDraft, validateSpeechSettings } from "./speechTranscription";
 import type { ChatSpeechOptions } from "./useRecordedSpeech";
 import { useI18n } from "../i18n/context";
+import { speechErrorMessage } from "./speechErrors";
+import { openSpeechMicrophone } from "./speechMicrophone";
 
 type Capture = Awaited<ReturnType<typeof createPCMCapture>>;
 interface ActiveLiveSpeech {
@@ -24,6 +26,7 @@ export function useLiveSpeech(options: ChatSpeechOptions) {
   const latest = useRef(options);
   latest.current = options;
   const active = useRef<ActiveLiveSpeech | null>(null);
+  const startingStream = useRef<MediaStream | null>(null);
   const ending = useRef(false);
   // Invalidates an in-flight start when the hook is cleared or a new start
   // begins, so an unmount or scope change cannot leak a live session or mic.
@@ -38,6 +41,8 @@ export function useLiveSpeech(options: ChatSpeechOptions) {
     const current = active.current;
     active.current = null;
     ending.current = false;
+    startingStream.current?.getTracks().forEach((track) => track.stop());
+    startingStream.current = null;
     current?.stream.getTracks().forEach((track) => track.stop());
     try {
       await current?.capture?.stop();
@@ -56,7 +61,7 @@ export function useLiveSpeech(options: ChatSpeechOptions) {
   useEffect(() => {
     void clear();
     setError("");
-  }, [options.scope, options.settings.provider]);
+  }, [options.scope, options.settings.provider, options.settings.microphoneId]);
   useEffect(() => {
     if (options.disabled) void clear();
   }, [options.disabled]);
@@ -161,17 +166,22 @@ export function useLiveSpeech(options: ChatSpeechOptions) {
       }
       return;
     }
+    if (status === "starting") {
+      await clear();
+      return;
+    }
     if (options.disabled) return;
     setError("");
     const token = ++startToken.current;
     try {
       validateSpeechSettings(options.settings);
       setStatus("starting");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await openSpeechMicrophone(options.settings.microphoneId);
       if (token !== startToken.current) {
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
+      startingStream.current = stream;
       const id = await liveSpeechTransport.start({
         endpointType: options.settings.endpointType,
         apiKey: options.settings.apiKey,
@@ -190,6 +200,7 @@ export function useLiveSpeech(options: ChatSpeechOptions) {
         partial: "",
         items: new Map<string, string>(),
       };
+      startingStream.current = null;
       active.current = current;
       current.capture = await createPCMCapture(
         stream,
@@ -210,11 +221,8 @@ export function useLiveSpeech(options: ChatSpeechOptions) {
       setMeterStream(stream);
       setStatus("recording");
     } catch (caught) {
-      setError(
-        `${t("speech.startError")}: ${
-          caught instanceof Error ? caught.message : String(caught)
-        }`,
-      );
+      if (token !== startToken.current) return;
+      setError(`${t("speech.startError")}: ${speechErrorMessage(caught, t)}`);
       await clear();
     }
   }

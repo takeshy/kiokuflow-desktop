@@ -714,6 +714,9 @@ func searchFilesInBase(base, query string, limit int) ([]FileSearchResult, error
 			}
 			return nil
 		}
+		if entry.Type()&os.ModeSymlink != 0 {
+			return nil
+		}
 		rel, _ := filepath.Rel(base, path)
 		if strings.Contains(strings.ToLower(filepath.ToSlash(rel)), query) {
 			results = append(results, FileSearchResult{Path: filepath.ToSlash(rel), Name: entry.Name()})

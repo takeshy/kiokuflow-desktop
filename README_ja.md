@@ -69,6 +69,9 @@ MCP Server、Agent Skill、OKF bundle、PluginとAIをフルで活用できる�
 kiokuflow-desktopは、内蔵のドキュメント機能やAI機能だけに限定されません。**Settings
 → Plugins**からPluginを追加すると、用途に特化したアプリケーションを同じローカルWorkspace内で利用できます。
 
+Desktop 専用パッチは、リリースの `hostPatches` に `kiokuflow-desktop` を指定します。
+従来の `gemihub-desktop` を指定したリリースもインストールできます。
+
 同じ画面から、ポータブルな[Agent Plugins v1.0.0](https://agent-plugins.org/)も利用できます。公開GitHub
 packageをpreviewしてinstallすると、含まれるAgent Skillsとstdio／Streamable HTTP MCP
 Serverが追加されます。packageはcommitへ固定され、GemiHub固有のUI Pluginとは独立して有効化、更新、削除できます。更新内容はinstall前にpreviewされ、MCP
@@ -101,6 +104,10 @@ Transcribeは次の2つの接続方法に対応しています。
   音声用の接続設定は不要です。Vertex AI APIの有効化とモデルの利用権限が必要です。
   現在は `global` リージョンの `gemini-3.5-transcribe-preview` を使用します。
 
+録音方式と Live transcription では、設定の「音声入力 > マイクと言語」でマイクを選べます。
+「マイクを確認」を押すと、選択した機器への接続を確認し、機器一覧を更新します。
+ブラウザ音声認識では、OS の既定のマイクを使用します。
+
 言語は `auto`（自動判定）、`ja-JP`（日本語）、`en-US`（英語）などを指定できます。
 録音は保持分を含めて最大5分で、停止後に認識結果を下書きに反映します。
 接続テストは短い無音データを送信します。API利用料金が発生する場合があります。
@@ -118,6 +125,17 @@ Cloud Speech-to-Text V1の設定は不要です。
 
 仕様：[Gemini API](https://ai.google.dev/gemini-api/docs/generate-content/transcribe)、
 [Vertex AI](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-transcribe)。
+
+## ライブ音声会話
+
+Chat 上部の「ライブ音声会話」を開き、Gemini または OpenAI のモデルと声を選びます。
+AI 設定の API キーと、音声入力設定で選んだマイクを使用します。
+ミュートや、返信中に話しかけて割り込む操作ができます。会話を終了すると、
+文字起こしが現在のチャットに追加され、通常の履歴設定に従って保存されます。
+
+直近のチャットを会話の背景にできます。Workspace ファイルへの読み取り専用アクセスと
+RAG インデックスは、それぞれ有効にできます。Gemini では「Web 検索（Google）」も
+選べます。Web 検索を有効にした通話の検索候補と文字起こしは、ライブ画面内に表示します。
 
 ## スクリーンショット
 

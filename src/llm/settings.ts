@@ -160,6 +160,7 @@ export interface SpeechSettings {
   apiKey: string;
   model: string;
   language: string;
+  microphoneId: string;
   questionPhrases?: string;
   newlinePhrases?: string;
   exclamationPhrases?: string;
@@ -180,6 +181,7 @@ export const defaultSpeechSettings: SpeechSettings = {
   apiKey: "",
   model: "whisper-1",
   language: "auto",
+  microphoneId: "",
   questionPhrases: "question, question mark",
   newlinePhrases: "enter",
   exclamationPhrases: "exclamation",
@@ -220,6 +222,9 @@ export function loadSpeechSettings(
   const settings: SpeechSettings = {
     ...defaultSpeechSettings,
     ...saved,
+    microphoneId: typeof saved?.microphoneId === "string"
+      ? saved.microphoneId
+      : defaultSpeechSettings.microphoneId,
     shortcut: validSpeechShortcut(saved?.shortcut),
     silenceSeconds: typeof saved?.silenceSeconds === "number" &&
         Number.isInteger(saved.silenceSeconds) && saved.silenceSeconds >= 0 &&

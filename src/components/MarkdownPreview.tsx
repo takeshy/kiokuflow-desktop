@@ -1,4 +1,4 @@
-import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
+import ReactMarkdown, { type Components, defaultUrlTransform } from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import {
@@ -214,6 +214,7 @@ export function MarkdownPreview({
   onImageClick,
   onTaskChange,
   taskChangeOffset = 0,
+  scrollTables = false,
 }: {
   content: string;
   isDark: boolean;
@@ -223,6 +224,7 @@ export function MarkdownPreview({
   onImageClick?: (src: string) => void;
   onTaskChange?: (index: number, completed: boolean) => void;
   taskChangeOffset?: number;
+  scrollTables?: boolean;
 }) {
   let taskIndex = 0;
   return (
@@ -233,6 +235,15 @@ export function MarkdownPreview({
         urlTransform={(url) =>
           isLocalDocumentHref(url) ? url : defaultUrlTransform(url)}
         components={{
+          ...(scrollTables
+            ? {
+              table: ({ node: _node, ...props }) => (
+                <div className="markdown-table-scroll">
+                  <table {...props} />
+                </div>
+              ),
+            } satisfies Components
+            : {}),
           input: ({ type, checked, disabled, ...props }) => {
             const index = type === "checkbox" ? taskIndex++ : -1;
             return (

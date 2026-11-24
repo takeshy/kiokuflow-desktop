@@ -95,6 +95,9 @@ kiokuflow-desktop is not limited to built-in document and AI tools. Install
 plugins from **Settings → Plugins** to add complete, task-focused applications
 to the same local Workspace:
 
+For desktop-specific release patches, use `kiokuflow-desktop` in `hostPatches`.
+Releases with the earlier `gemihub-desktop` entry can still be installed.
+
 The same screen also supports portable [Agent Plugins v1.0.0](https://agent-plugins.org/).
 Preview and install a public GitHub package to add its Agent Skills and stdio or
 Streamable HTTP MCP servers. Packages are pinned to a commit and can be disabled,
@@ -137,6 +140,11 @@ plus replacement rules such as `daily note => /daily`.
   automatically following changes. No separate speech connection settings are needed.
   Enable the Vertex AI API and ensure access to the model. This uses `gemini-3.5-transcribe-preview` in `global`.
 
+For recorded and live transcription, choose a microphone in **Voice input →
+Microphone and language**. **Test microphone** checks the selected device and
+refreshes the device list. Browser speech recognition uses the system default
+microphone.
+
 Set the language to `auto`, `ja-JP`, `en-US`, or another supported language code.
 Recording is limited to five minutes including retained clips. After recording
 stops, the transcript is inserted into the draft. The connection test sends a
@@ -158,6 +166,19 @@ that automatic reopening.
 
 References: [Gemini API](https://ai.google.dev/gemini-api/docs/generate-content/transcribe),
 [Vertex AI](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-transcribe).
+
+## Live voice conversation
+
+Select **Live voice conversation** in the Chat header, then choose Gemini or
+OpenAI, a model, and a voice. It uses the provider's API key from AI settings
+and the microphone selected in Voice input settings. You can mute the mic or
+speak during a reply to interrupt it. Ending the call appends the transcript
+to the current chat, where the usual history settings apply.
+
+The call can use recent chat messages as context. Read-only Workspace access and
+the RAG index can be enabled independently. Gemini calls also offer **Web search
+(Google)**. Search suggestions and the transcript for a search-enabled call
+are shown in the Live dialog and are not saved to chat history.
 
 ## Screenshots
 

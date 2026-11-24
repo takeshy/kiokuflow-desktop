@@ -1,6 +1,6 @@
 import { speechErrorMessage } from "./speechErrors";
 import { useI18n } from "../i18n/context";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AudioLines,
   Check,
@@ -29,6 +29,7 @@ import {
 } from "./settings";
 import { speechShortcutFromEvent, speechShortcutLabel } from "./speechShortcut";
 import { speechLanguageCodes, speechLanguageLabel } from "./speechLanguages";
+import { openSpeechMicrophone } from "./speechMicrophone";
 import {
   parseReplacementRules,
   serializeReplacementRules,
@@ -161,6 +162,35 @@ export function SpeechSettingsPanel(
   const patch = (change: Partial<SpeechSettings>) =>
     onChange({ ...settings, ...change });
   const pending = useRef<AbortController | null>(null);
+  const microphoneListRequest = useRef(0);
+  const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
+  const browser = settings.provider === "browser";
+  const missingMicrophone = settings.microphoneId &&
+    !microphones.some((device) => device.deviceId === settings.microphoneId);
+  const refreshMicrophones = useCallback(async (signal?: AbortSignal) => {
+    const request = ++microphoneListRequest.current;
+    try {
+      const devices = await navigator.mediaDevices?.enumerateDevices?.();
+      if (!signal?.aborted && request === microphoneListRequest.current) {
+        setMicrophones((devices ?? []).filter(({ kind, deviceId }) =>
+          kind === "audioinput" && deviceId && deviceId !== "default"
+        ));
+      }
+    } catch {
+      // The connection check still works if the WebView hides the device list.
+    }
+  }, []);
+  useEffect(() => {
+    if (browser) return;
+    const mediaDevices = navigator.mediaDevices;
+    const onDeviceChange = () => void refreshMicrophones();
+    mediaDevices?.addEventListener("devicechange", onDeviceChange);
+    onDeviceChange();
+    return () => {
+      microphoneListRequest.current++;
+      mediaDevices?.removeEventListener("devicechange", onDeviceChange);
+    };
+  }, [browser, refreshMicrophones]);
   const [checking, setChecking] = useState<"microphone" | "server" | null>(
     null,
   );
@@ -213,16 +243,19 @@ export function SpeechSettingsPanel(
     try {
       let message: string;
       if (kind === "microphone") {
-        if (!navigator.mediaDevices?.getUserMedia) {
-          throw new Error(t("speech.noMic"));
+        const { signal } = controller;
+        const stream = await openSpeechMicrophone(browser ? "" : settings.microphoneId);
+        const stopTracks = () => stream.getTracks().forEach((track) => track.stop());
+        signal.addEventListener("abort", stopTracks, { once: true });
+        try {
+          signal.throwIfAborted();
+          const name = stream.getAudioTracks()[0]?.label;
+          if (!browser) await refreshMicrophones(signal);
+          message = name ? `${t("speech.micChecked")}: ${name}` : t("speech.micChecked");
+        } finally {
+          signal.removeEventListener("abort", stopTracks);
+          stopTracks();
         }
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
-        const name = stream.getAudioTracks()[0]?.label;
-        stream.getTracks().forEach((track) => track.stop());
-        controller.signal.throwIfAborted();
-        message = `${t("speech.micChecked")}${name ? `: ${name}` : ""}`;
       } else {
         await transcribeSpeech(
           encodeSpeechWav(new Float32Array(32000)),
@@ -237,6 +270,7 @@ export function SpeechSettingsPanel(
       }
     } catch (error) {
       if (pending.current === controller) {
+        if (kind === "microphone" && !browser) void refreshMicrophones(controller.signal);
         setFeedback({
           ok: false,
           text: speechErrorMessage(error, t),
@@ -328,8 +362,34 @@ export function SpeechSettingsPanel(
         </div>
         <div className="speech-settings-grid">
           <div className="speech-microphone-field">
-            <span>{t("speech.mic")}</span>
-            <strong>{t("speech.defaultMic")}</strong>
+            {browser ? (
+              <>
+                <span>{t("speech.mic")}</span>
+                <strong>{t("speech.defaultMic")}</strong>
+              </>
+            ) : (
+              <label className="settings-field">
+                <span>{t("speech.mic")}</span>
+                <select
+                  value={settings.microphoneId}
+                  disabled={!!checking}
+                  onChange={(event) => patch({ microphoneId: event.target.value })}
+                >
+                  <option value="">{t("speech.defaultMic")}</option>
+                  {microphones.map(({ deviceId, label }, index) => (
+                    <option key={deviceId} value={deviceId}>
+                      {label || `${t("speech.mic")} ${index + 1}`}
+                    </option>
+                  ))}
+                  {missingMicrophone && (
+                    <option value={settings.microphoneId}>
+                      {t("speech.savedMicrophone")}
+                    </option>
+                  )}
+                </select>
+                {!microphones.length && <small>{t("speech.microphoneListHint")}</small>}
+              </label>
+            )}
             <button
               type="button"
               className="speech-secondary-button"

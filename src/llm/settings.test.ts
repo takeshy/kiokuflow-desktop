@@ -70,6 +70,7 @@ test("speech settings keep browser as default and load compatible endpoints with
     apiKey: "",
     model: "whisper",
     language: "auto",
+    microphoneId: "",
     sendPhrase: "over",
     endpointType: "custom",
     shortcut: "",
@@ -98,6 +99,15 @@ test("read-aloud settings load with clamped values", () => {
   assertEquals(loadSpeechSettings({ readAloudRate: 0 }).readAloudRate, 0.5);
   assertEquals(loadSpeechSettings({ readAloudRate: NaN }).readAloudRate, 1);
   assertEquals(loadSpeechSettings({}).autoReadAloud, false);
+});
+
+test("speech settings restore the exact saved microphone selection", () => {
+  const speech = loadChatSettings({
+    getItem: () => '{"speech":{"provider":"live","microphoneId":"usb-mic"}}',
+  }).speech;
+  assertEquals(speech.microphoneId, "usb-mic");
+  assertEquals(selectSpeechEndpoint(speech, "gemini-transcribe").microphoneId, "usb-mic");
+  assertEquals(loadSpeechSettings(JSON.parse('{"microphoneId":null}')).microphoneId, "");
 });
 
 test("current OpenAI and Gemini model choices omit Gemini 2.5", () => {
