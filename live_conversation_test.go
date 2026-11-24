@@ -8,7 +8,7 @@ import (
 )
 
 func TestLiveWorkspaceToolsAreReadOnlyAndScoped(t *testing.T) {
-	workspace := t.TempDir()
+	workspace := canonicalTestPath(t, t.TempDir())
 	outside := filepath.Join(t.TempDir(), "outside.md")
 	for path, content := range map[string]string{
 		filepath.Join(workspace, "note.md"): "visible content",
